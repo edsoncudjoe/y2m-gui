@@ -2,6 +2,7 @@ from apiclient.discovery import build
 from apiclient.errors import HttpError
 #from oauth2client.tools import argparser
 import logging
+import os
 import pafy
 from prettytable import PrettyTable
 from pydub import AudioSegment
@@ -54,20 +55,37 @@ def dl_video(download_url):
 	try:
 		vid_data = pafy.new(download_url, size=True)
 		vid = vid_data.getbest(preftype="mp4")
-		vid.download(filepath="./temp/")
-#	except HTTP Error:
-#		print("This item is unavailable")
+		vid.download(filepath="./Video/")
 	except Exception, e:
 		print(e)
 
+def dl_mp3(download_url):	
+	try:
+		vid_data = pafy.new(download_url, size=True)
+		vid = vid_data.getbest(preftype="mp4")
+		fname = str(vid.filename)
+		vid.download(filepath="./temp/")
+
+		song = AudioSegment.from_file('./temp/{}'.format(str(vid.filename)), \
+			format='mp4')
+		song.export('./Audio/{}'.format(fname).replace(".mp4", ".mp3"), format='mp3')
+		print("mp3 in audio folder. deleting video")
+		os.remove("./temp/{}".format(fname))
+	except Exception, e:
+		print(e)	
+
+		
 #def main():
 r = get_videos(query)
 download_url = get_choice_from_results(r)
-dl_video(download_url)
+
+dl_item = raw_input("vid or mp3: ")
+if dl_item == "vid":
+	dl_video(download_url)
+elif dl_item == "mp3":
+	dl_mp3(download_url)
 #if __name__ == '__main__':
 #	main()
 
 
-#song = AudioSegment.from_file('./temp/{}'.format(str(vid.filename)), format='mp4')
-#song.export('./Audio/{}'.format(str(vid.filename).replace(".mp4", ".mp3")), format='mp3')
 
