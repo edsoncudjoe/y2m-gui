@@ -36,23 +36,42 @@ def get_videos(query):
 
 	return video_list
 
+def get_choice_from_results(video_list):
+	item_count = 1
+	x = PrettyTable(["Video name"])
+	x.align["Video name"] = "l"
+	x.padding_width = 10
+	for item in r:
+		x.add_row([str(item_count) + ". " + item[1]])
+		item_count += 1
+	print x
+
+	choice = int(raw_input(">:  ")) - 1
+
+	for item in enumerate(r):
+		if item[0] == choice:
+			download_url = YT_WATCH_URL+item[1][0]
+
+	return download_url
+
 
 r = get_videos(query)
+download_url = get_choice_from_results(r)
 
-item_count = 0
-x = PrettyTable(["Video name"])
-x.align["Video name"] = "l"
-x.padding_width = 10
-for item in r:
-    x.add_row([str(item_count) + ". " + item[1]])
-    item_count += 1
-print x
+#item_count = 1
+#x = PrettyTable(["Video name"])
+#x.align["Video name"] = "l"
+#x.padding_width = 10
+#for item in r:
+#    x.add_row([str(item_count) + ". " + item[1]])
+#    item_count += 1
+#print x
 
-choice = int(raw_input(">:  "))
+#choice = int(raw_input(">:  ")) - 1
 
-for item in enumerate(r):
-	if item[0] == choice:
-		print YT_WATCH_URL+item[1][0] #send this link to pafy and pydub
+#for item in enumerate(r):
+#	if item[0] == choice:
+#		download_url = YT_WATCH_URL+item[1][0] #send this link to pafy and pydub
 
 		#test outcome
 
