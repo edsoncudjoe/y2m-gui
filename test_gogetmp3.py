@@ -1,7 +1,7 @@
 import unittest
 from apiclient.discovery import build
 from gogetmp3 import yt, get_videos, query, DEFAULT, YT_WATCH_URL, \
-	YT_SERVICE_NAME, YT_API_VERSION, DEVELOPER_KEY, download_url
+	YT_SERVICE_NAME, YT_API_VERSION, DEVELOPER_KEY, download_url, vid
 
 
 class TestGogetmp3Video(unittest.TestCase):
@@ -28,7 +28,10 @@ class TestGogetmp3Video(unittest.TestCase):
 	def test_user_chosen_url(self):
 		self.assertEqual(len(download_url), 43)
 
+	def test_dl_filetype_is_mp4(self):
+		self.assertIn(".mp4", vid.filename)
 
+	
 
 	#test watch url
 	#test pafy dl
