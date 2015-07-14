@@ -31,33 +31,53 @@ class YtData(object):
     def get_videos(self, query, vtype):
         """returns list of search results from user query"""
         self.video_list = []
+        self.pl_ids = []
         # num = 1
         self.vid_response = self.yt.search().list(part="snippet", q=query,
                                                   type=vtype, maxResults=self.
                                                   DEFAULT).execute()
-
-        for item in self.vid_response['items']:
-            if vtype == "video":
+        if vtype == "video":
+            for item in self.vid_response['items']:
                 self.video_list.append((item['id']['videoId'],
                                         item['snippet']['title']))
-            elif vtype == "playlist":
+        elif vtype == "playlist":
+            for item in self.vid_response['items']:
                 self.video_list.append((item['id']['playlistId'],
-                                        item['snippet']['title']))
+                                        item['snippet']['title'],))
+            for v in self.video_list:
+                self.ic = self.yt.playlists().list(part="contentDetails",
+                                              id=v[0]).execute()
+                for i in self.ic['items']:
+                    self.pl_ids.append((v[0], v[1], i["contentDetails"][
+                        "itemCount"]))
+        else:
+            print("None found")
         # num += 1
 
         return self.video_list
 
 
-    def get_choice_from_results(self, video_list):
+    def get_choice_from_results(self, video_list, vtype):
         """Prints items from user results list. Returns stream url"""
         self.item_count = 1
-        self.x = PrettyTable(["Video name"])
-        self.x.align["Video name"] = "l"
-        self.x.padding_width = 10
-        for item in self.video_list:
-            self.x.add_row([str(self.item_count) + ". " + item[1]])
-            self.item_count += 1
-        print self.x
+
+        if vtype == "video":
+            self.x = PrettyTable(["Video name"])
+            self.x.align["Video name"] = "l"
+            self.x.padding_width = 10
+            for item in self.video_list:
+                self.x.add_row([str(self.item_count) + ". " + item[1]])
+                self.item_count += 1
+            print self.x
+        elif vtype == "playlist":
+            self.x = PrettyTable(["Playlist", "Items"])
+            self.x.align["Video name"] = "l"
+            self.x.padding_width = 10
+            for item in self.pl_ids:
+                self.x.add_row([str(self.item_count) + ". " + item[1],
+                                str(item[2]) + " videos"])
+                self.item_count += 1
+            print self.x
 
         self.choice = int(raw_input(">:  ")) - 1
 
@@ -99,7 +119,7 @@ class YtData(object):
 def main():
     n = YtData()
     r = n.get_videos(n.query, n.vtype)
-    download_url = n.get_choice_from_results(r)
+    download_url = n.get_choice_from_results(r, n.vtype)
 
     dl_item = raw_input("vid or mp3: ")
     if dl_item == "vid":
