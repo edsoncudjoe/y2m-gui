@@ -1,6 +1,6 @@
 from apiclient.discovery import build
 from apiclient.errors import HttpError
-#from oauth2client.tools import argparser
+# from oauth2client.tools import argparser
 import logging
 import os
 import pafy
@@ -9,83 +9,105 @@ from pydub import AudioSegment
 
 logging.basicConfig()
 
-YT_SERVICE_NAME = "youtube"
-YT_API_VERSION = "v3"
-DEVELOPER_KEY = "AIzaSyAPnTeiuqIgO74mOvHe-d_pKd9526AdiI0"
-DEFAULT = 25
-YT_WATCH_URL = "https://www.youtube.com/watch?v="
+class YtData(object):
 
-yt = build(YT_SERVICE_NAME, YT_API_VERSION, developerKey=DEVELOPER_KEY)
+    def __init__(self):
+        self.self = self
 
-#query = raw_input('enter_query: ').replace(" ", "+")
-query="kev+brown"
-def get_videos(query):
-	"""returns list of search results from user query"""
-	video_list = []
-	#num = 1
-	vid_response = yt.search().list(part="snippet", q=query, type="video", \
-		maxResults=DEFAULT).execute()
+        self.YT_SERVICE_NAME = "youtube"
+        self.YT_API_VERSION = "v3"
+        self.DEVELOPER_KEY = "AIzaSyAPnTeiuqIgO74mOvHe-d_pKd9526AdiI0"
+        self.DEFAULT = 25
+        self.YT_WATCH_URL = "https://www.youtube.com/watch?v="
 
-	for item in vid_response['items']:
-		video_list.append((item['id']['videoId'], item['snippet']['title']))
-		#num += 1
+        self.yt = build(self.YT_SERVICE_NAME, self.YT_API_VERSION,
+                    developerKey=self.DEVELOPER_KEY)
 
-	return video_list
+        # self.query = raw_input('enter_query: ').replace(" ", "+")
+        self.query = "kev+brown"
+        self.vtype = "playlist"
 
-def get_choice_from_results(video_list):
-	"""Prints items from user results list. Returns stream url"""
-	item_count = 1
-	x = PrettyTable(["Video name"])
-	x.align["Video name"] = "l"
-	x.padding_width = 10
-	for item in video_list:
-		x.add_row([str(item_count) + ". " + item[1]])
-		item_count += 1
-	print x
 
-	choice = int(raw_input(">:  ")) - 1
+    def get_videos(self, query, vtype):
+        """returns list of search results from user query"""
+        self.video_list = []
+        # num = 1
+        self.vid_response = self.yt.search().list(part="snippet", q=query,
+                                                  type=vtype, maxResults=self.
+                                                  DEFAULT).execute()
 
-	for item in enumerate(video_list):
-		if item[0] == choice:
-			download_url = YT_WATCH_URL+item[1][0]
+        for item in self.vid_response['items']:
+            if vtype == "video":
+                self.video_list.append((item['id']['videoId'],
+                                        item['snippet']['title']))
+            elif vtype == "playlist":
+                self.video_list.append((item['id']['playlistId'],
+                                        item['snippet']['title']))
+        # num += 1
 
-	return download_url
+        return self.video_list
 
-def dl_video(download_url):
-	try:
-		vid_data = pafy.new(download_url, size=True)
-		vid = vid_data.getbest(preftype="mp4")
-		vid.download(filepath="./Video/")
-	except Exception, e:
-		print(e)
 
-def dl_mp3(download_url):	
-	try:
-		vid_data = pafy.new(download_url, size=True)
-		vid = vid_data.getbest(preftype="mp4")
-		fname = str(vid.filename)
-		vid.download(filepath="./temp/")
+    def get_choice_from_results(self, video_list):
+        """Prints items from user results list. Returns stream url"""
+        self.item_count = 1
+        self.x = PrettyTable(["Video name"])
+        self.x.align["Video name"] = "l"
+        self.x.padding_width = 10
+        for item in self.video_list:
+            self.x.add_row([str(self.item_count) + ". " + item[1]])
+            self.item_count += 1
+        print self.x
 
-		song = AudioSegment.from_file('./temp/{}'.format(str(vid.filename)), \
-			format='mp4')
-		song.export('./Audio/{}'.format(fname).replace(".mp4", ".mp3"), format='mp3')
-		print("mp3 in audio folder. deleting video")
-		os.remove("./temp/{}".format(fname))
-	except Exception, e:
-		print(e)	
+        self.choice = int(raw_input(">:  ")) - 1
 
-		
-#def main():
-r = get_videos(query)
-download_url = get_choice_from_results(r)
+        for item in enumerate(self.video_list):
+            if item[0] == self.choice:
+                self.download_url = self.YT_WATCH_URL + item[1][0]
 
-dl_item = raw_input("vid or mp3: ")
-if dl_item == "vid":
-	dl_video(download_url)
-elif dl_item == "mp3":
-	dl_mp3(download_url)
-#if __name__ == '__main__':
-#	main()
+        return self.download_url
+
+
+    def dl_video(self, download_url):
+        try:
+            self.vid_data = pafy.new(download_url, size=True)
+            self.vid = self.vid_data.getbest(preftype="mp4")
+            self.vid.download(filepath="./Video/")
+            print("video extraction complete!")
+        except Exception, e:
+            print(e)
+
+
+    def dl_mp3(self, download_url):
+        try:
+            self.vid_data = pafy.new(download_url, size=True)
+            self.vid = self.vid_data.getbest(preftype="mp4")
+            self.fname = str(self.vid.filename)
+            self.vid.download(filepath="./temp/")
+
+            self.song = AudioSegment.from_file('./temp/{}'.format(str(
+                self.vid.filename)), format='mp4')
+            self.song.export('./Audio/{}'.format(self.fname).replace(".mp4",
+                                                                 ".mp3"),
+                             format='mp3')
+            os.remove("./temp/{}".format(self.fname))
+            print("mp3 extraction complete!")
+        except Exception, e:
+            print(e)
+
+
+def main():
+    n = YtData()
+    r = n.get_videos(n.query, n.vtype)
+    download_url = n.get_choice_from_results(r)
+
+    dl_item = raw_input("vid or mp3: ")
+    if dl_item == "vid":
+        n.dl_video(download_url)
+    elif dl_item == "mp3":
+        n.dl_mp3(download_url)
+if __name__ == '__main__':
+    main()
 
 
 
