@@ -24,8 +24,8 @@ class YtData(object):
                     developerKey=self.DEVELOPER_KEY)
 
         # self.query = raw_input('enter_query: ').replace(" ", "+")
-        self.query = "kev+brown"
-        self.vtype = "playlist"
+        self.query = ""#raw_input("Search: ")
+        self.vtype = ""#raw_input("Enter video or playlist")
 
 
     def get_videos(self, query, vtype):
