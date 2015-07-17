@@ -1,43 +1,20 @@
 import unittest
 from apiclient.discovery import build
-from gogetmp3 import yt, get_videos, query, DEFAULT, YT_WATCH_URL, \
-	YT_SERVICE_NAME, YT_API_VERSION, DEVELOPER_KEY, download_url, vid
+from gogetmp3 import YtData
 
 
 class TestGogetmp3Video(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.n = YtData()
 
-	@classmethod
-	def setUpClass(cls):
-		cls.yt = build(YT_SERVICE_NAME, YT_API_VERSION, developerKey=DEVELOPER_KEY)
-		
-		query="kev+brown"
-		
-		cls.vid_result = cls.yt.search().list(part="snippet", q=query, \
-			type="video", maxResults=DEFAULT).execute()
-		cls.r = get_videos(query)
+    def test_dl_mp3(self):
+	    self.assertEqual(self.n.song.endswith(), '.ogg')
 
-	def test_length_video_list(self):
-		self.assertEqual(len(self.r), DEFAULT)
-
-	def test_get_videos_type(self):	
-		self.assertNotEqual(type(self.r), type(self.vid_result))
-
-	def test_search_url(self):
-		self.assertEqual(YT_WATCH_URL, "https://www.youtube.com/watch?v=")
-
-	def test_user_chosen_url(self):
-		self.assertEqual(len(download_url), 43)
-
-	def test_dl_filetype_is_mp4(self):
-		self.assertIn(".mp4", vid.filename)
-
-	
-
-	#test watch url
-	#test pafy dl
-	#test pydub convert
-	
+    # test watch url
+    # test pafy dl
+    # test pydub convert
 
 
 if __name__ == '__main__':
-	unittest.main()
+    unittest.main()

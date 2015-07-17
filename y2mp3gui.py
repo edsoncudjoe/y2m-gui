@@ -29,7 +29,7 @@ class Application(tk.Frame):
         self.results_frame = tk.LabelFrame(self.parent, bg='gray93',
                                            text="results")
         self.choice_dl = tk.LabelFrame(self.parent, bg='gray93',
-                                           text="download")
+                                       text="download")
 
         self.search_frame.grid(row=0, column=0)
         self.results_frame.grid(row=1, column=0)
@@ -83,9 +83,10 @@ class Application(tk.Frame):
         # Dl
         self.display_choice = tk.Text(self.choice_dl, x=0, y=50, width=83,
                                       height=2, wrap=tk.WORD)
-        self.download_item = ttk.Button(self.choice_dl, text="D")
+        self.download_item = ttk.Button(self.choice_dl, text="D",
+                                        command=self.get_id_and_download)
         self.progress = ttk.Progressbar(self.choice_dl, orient="horizontal",
-                                        length=200, mode="determinate")
+                                        length=300, mode="indeterminate")
 
     def grid_widgets(self):
         self.search_ent.grid(row=0, column=0)
@@ -102,7 +103,6 @@ class Application(tk.Frame):
         self.display_choice.delete(0.0, END)
         self.display_choice.insert(0.0, "You've chosen: {}".format(
             self.user_choice[0].encode('utf-8')))
-        self.find_user_choice_in_playlist_info()
 
     def treeview_sort(self, tv, col, reverse):
         l = [(tv.set(k, col), k) for k in tv.get_children('')]
@@ -202,13 +202,20 @@ class Application(tk.Frame):
         self.p = pafy.new(item_id, size=True)
         self.video = self.p.getbest(preftype="mp4")
         self.video.download(filepath="./Video/",
-                            callback=self.progress_callback)
+                            quiet=True,
+                            callback=self.progress_callback,
+                            meta=True)
 
     def progress_callback(self, total, recvd, ratio, rate, eta):
-        self.progress_callback.config(maximum=total, value=recvd)
-        if recvd == total:
-            self.display_choice.delete(0.0. END)
-            self.display_choice.insert(0.0, "complete!")
+        self.progress['maximum'] = total
+        self.progress['value'] = recvd
+        self.progress.start()
+        self.display_choice.delete(0.0, END)
+        self.display_choice.insert(0.0, "complete")
+
+    def get_id_and_download(self):
+        self.choice_id = self.find_user_choice_in_playlist_info()
+        self.download_video(self.choice_id)
 
 
 # set up dl from vid id

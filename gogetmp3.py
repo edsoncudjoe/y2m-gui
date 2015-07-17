@@ -1,6 +1,6 @@
 from apiclient.discovery import build
 from apiclient.errors import HttpError
-# from oauth2client.tools import argparser
+
 import logging
 import os
 import pafy
@@ -23,9 +23,9 @@ class YtData(object):
         self.yt = build(self.YT_SERVICE_NAME, self.YT_API_VERSION,
                     developerKey=self.DEVELOPER_KEY)
 
-        # self.query = raw_input('enter_query: ').replace(" ", "+")
-        self.query = ""#raw_input("Search: ")
-        self.vtype = ""#raw_input("Enter video or playlist")
+
+        self.query = None
+        self.vtype = None
 
 
     def get_videos(self, query, vtype):
@@ -101,31 +101,42 @@ class YtData(object):
     def dl_mp3(self, download_url):
         try:
             self.vid_data = pafy.new(download_url, size=True)
-            self.vid = self.vid_data.getbest(preftype="mp4")
-            self.fname = str(self.vid.filename)
-            self.vid.download(filepath="./temp/")
-
-            self.song = AudioSegment.from_file('./temp/{}'.format(str(
-                self.vid.filename)), format='mp4')
-            self.song.export('./Audio/{}'.format(self.fname).replace(".mp4",
+            self.audio = self.vid_data.getbestaudio(preftype="ogg")
+            self.fname = str(self.audio.filename)
+            self.audio.download(filepath="./temp/")
+            print("Download audio complete")
+            self.song = AudioSegment.from_ogg('./temp/{}'.format(
+                self.audio.filename.encode('utf-8')))
+            self.song.export('./Audio/{}'.format(self.fname).replace(".ogg",
                                                                  ".mp3"),
                              format='mp3')
             os.remove("./temp/{}".format(self.fname))
-            print("mp3 extraction complete!")
+            print("mp3 conversion complete!")
         except Exception, e:
             print(e)
 
-
+n = YtData()
 def main():
-    n = YtData()
-    r = n.get_videos(n.query, n.vtype)
-    download_url = n.get_choice_from_results(r, n.vtype)
 
-    dl_item = raw_input("vid or mp3: ")
-    if dl_item == "vid":
-        n.dl_video(download_url)
-    elif dl_item == "mp3":
-        n.dl_mp3(download_url)
+    n.query = raw_input("Search item: ").replace(" ", "+")
+    n.vtype = raw_input("Choose from either video or playlist: ")
+    try:
+        if n.vtype == "video" or n.vtype == "playlist":
+            r = n.get_videos(n.query, n.vtype)
+            download_url = n.get_choice_from_results(r, n.vtype)
+
+            dl_item = raw_input("video[v] or audio[a]: ")
+            if dl_item == "v":
+                n.dl_video(download_url)
+            elif dl_item == "a":
+                n.dl_mp3(download_url)
+            else:
+                raise Exception
+        else:
+            raise Exception
+    except Exception:
+        print("Format not supported")
+
 if __name__ == '__main__':
     main()
 
