@@ -40,11 +40,16 @@ class Application(tk.Frame):
         self.create_widgets()
         self.grid_widgets()
 
+        self.progress_val = 0
+        self.maxbytes = 0
+
     def create_variables(self):
         self.usr_search = tk.StringVar()
         self.vidtype = tk.StringVar(self.search_frame)
         self.type_options = ["Select type", "video", "playlist"]
         self.vidtype.set(self.type_options[1])
+        # self.prog = tk.IntVar()
+        self.state = tk.StringVar()
 
     def create_menubar(self):
         pass
@@ -84,9 +89,12 @@ class Application(tk.Frame):
         self.display_choice = tk.Text(self.choice_dl, x=0, y=50, width=83,
                                       height=2, wrap=tk.WORD)
         self.download_item = ttk.Button(self.choice_dl, text="D",
-                                        command=self.get_id_and_download)
-        self.progress = ttk.Progressbar(self.choice_dl, orient="horizontal",
-                                        length=300, mode="indeterminate")
+                                        command=lambda: self.download_video(self.choice_id))
+        #self.progress = ttk.Progressbar(self.choice_dl, orient="horizontal",
+        #                                length=300, mode="determinate",
+        #                                variable=self.prog)
+        self.dl_status = tk.Label(self.choice_dl, textvariable=self.state,
+                                  width=80)
 
     def grid_widgets(self):
         self.search_ent.grid(row=0, column=0)
@@ -96,13 +104,15 @@ class Application(tk.Frame):
         self.tree_scrollbar.grid(row=0, column=1, sticky=N + S)
         self.display_choice.grid(row=0, column=0)
         self.download_item.grid(row=0, column=1)
-        self.progress.grid(row=1, column=0, columnspan=2)
+        self.dl_status.grid(row=1, column=0, columnspan=2)
+        # self.progress.grid(row=2, column=0, columnspan=2)
 
     def on_double_click(self, event):
         self.get_user_choice()
         self.display_choice.delete(0.0, END)
         self.display_choice.insert(0.0, "You've chosen: {}".format(
             self.user_choice[0].encode('utf-8')))
+        self.choice_id = self.find_user_choice_in_playlist_info()
 
     def treeview_sort(self, tv, col, reverse):
         l = [(tv.set(k, col), k) for k in tv.get_children('')]
@@ -117,7 +127,10 @@ class Application(tk.Frame):
             self.treeview_sort(tv, col, not reverse))
 
     def print_uri(self):
-        """Tests search output to be directed to data api."""
+        """
+        Currently unused
+        Tests search output to be directed to data api.
+        """
         search_ent = self.usr_search.get().replace(" ", "+")
         search_type = self.vidtype.get()
         res = new.yt.search().list(part="snippet", q=search_ent,
@@ -136,7 +149,7 @@ class Application(tk.Frame):
     def get_result_list(self):
         """
         Sends search request to YouTube Data api v3.
-        Returns searchresults as list
+        Returns search results as list
         """
         self.result_command = new.yt.search().list(part="snippet",
                                                    q=self.search_ent,
@@ -201,20 +214,24 @@ class Application(tk.Frame):
     def download_video(self, item_id):
         self.p = pafy.new(item_id, size=True)
         self.video = self.p.getbest(preftype="mp4")
+        self.state.set("Downloading video...")
         self.video.download(filepath="./Video/",
                             quiet=True,
                             callback=self.progress_callback,
                             meta=True)
 
     def progress_callback(self, total, recvd, ratio, rate, eta):
-        self.progress['maximum'] = total
-        self.progress['value'] = recvd
-        self.progress.start()
-        self.display_choice.delete(0.0, END)
-        self.display_choice.insert(0.0, "complete")
+        self.update_idletasks()
+        if recvd == total:
+            self.state.set("Download complete.")
+        #self.progress["maximum"] = total
+        #self.progress_val += recvd
+        #self.progress['value'] = self.progress_val
+        #self.progress.update_idletasks()
 
     def get_id_and_download(self):
-        self.choice_id = self.find_user_choice_in_playlist_info()
+        """currently unused"""
+        # self.choice_id = self.find_user_choice_in_playlist_info()
         self.download_video(self.choice_id)
 
 
