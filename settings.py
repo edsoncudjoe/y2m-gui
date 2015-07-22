@@ -8,7 +8,7 @@ class YtSettings(object):
 
         self.YT_SERVICE_NAME = "youtube"
         self.YT_API_VERSION = "v3"
-        self.DEVELOPER_KEY = "AIzaSyAPnTeiuqIgO74mOvHe-d_pKd9526AdiI0"
+        self.DEVELOPER_KEY = "AIzaSyA6NftYUAeddmV_cBB5NmfCE0C5EKTZbbc"
         self.DEFAULT = 25
         self.YT_WATCH_URL = "https://www.youtube.com/watch?v="
 
