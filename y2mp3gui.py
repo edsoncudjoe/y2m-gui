@@ -1,7 +1,4 @@
-from apiclient.discovery import build
-from apiclient.errors import HttpError
 import os
-import logging
 import Tkinter as tk
 import ttk
 import pafy
@@ -22,14 +19,15 @@ class Application(tk.Frame):
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.initialize()
+        self.search_type = "video"
 
     def initialize(self):
         self.search_frame = tk.LabelFrame(self.parent, bg='gray93',
-                                          text="search")
+                                          text="search", padx=20, pady=20)
         self.results_frame = tk.LabelFrame(self.parent, bg='gray93',
-                                           text="results")
+                                           text="results", padx=20, pady=20)
         self.choice_dl = tk.LabelFrame(self.parent, bg='gray93',
-                                       text="download")
+                                       text="download", padx=20, pady=20)
 
         self.search_frame.grid(row=0, column=0)
         self.results_frame.grid(row=1, column=0)
@@ -40,27 +38,23 @@ class Application(tk.Frame):
         self.create_widgets()
         self.grid_widgets()
 
-        self.progress_val = 0
-        self.maxbytes = 0
-
     def create_variables(self):
         self.usr_search = tk.StringVar()
-        self.vidtype = tk.StringVar(self.search_frame)
-        self.type_options = ["Select type", "video", "playlist"]
-        self.vidtype.set(self.type_options[1])
-        # self.prog = tk.IntVar()
+        # self.vidtype = tk.StringVar(self.search_frame)
+        # self.type_options = ["Select type", "video", "playlist"]
+        # self.vidtype.set(self.type_options[1])
         self.state = tk.StringVar()
 
     def create_menubar(self):
         pass
 
     def create_widgets(self):
-        self.search_ent = ttk.Entry(self.search_frame, width=57,
+        self.search_ent = ttk.Entry(self.search_frame, width=72,
                                     textvariable=self.usr_search)
-        self.search_ent.bind('<Return>', self.print_uri)
-        self.type = apply(ttk.OptionMenu, (self.search_frame, self.vidtype) +
-                          tuple(self.type_options))
-        self.type['width'] = 10
+        self.search_ent.bind('<Return>', self.start_search)
+        # self.type = apply(ttk.OptionMenu, (self.search_frame, self.vidtype) +
+        #                  tuple(self.type_options))
+        # self.type['width'] = 10
         self.search_btn = ttk.Button(self.search_frame, text="search",
                                      command=self.collect_and_populate_results)
 
@@ -88,24 +82,26 @@ class Application(tk.Frame):
         # Dl
         self.display_choice = tk.Text(self.choice_dl, x=0, y=50, width=83,
                                       height=2, wrap=tk.WORD)
-        self.download_item = ttk.Button(self.choice_dl, text="D",
-                                        command=lambda: self.download_video(self.choice_id))
-        #self.progress = ttk.Progressbar(self.choice_dl, orient="horizontal",
-        #                                length=300, mode="determinate",
-        #                                variable=self.prog)
+        self.download_item = ttk.Button(self.choice_dl, text="Video",
+                                        command=lambda: self.download_video(
+                                            self.choice_id,
+                                            location="./Video/"))
+        self.mp3_btn = ttk.Button(self.choice_dl, text="Mp3",
+                                  command=lambda: self.dl_ogg(
+                                      self.choice_id, location="./temp/"))
         self.dl_status = tk.Label(self.choice_dl, textvariable=self.state,
                                   width=80)
 
     def grid_widgets(self):
         self.search_ent.grid(row=0, column=0)
-        self.type.grid(row=0, column=1)
+        # self.type.grid(row=0, column=1)
         self.search_btn.grid(row=0, column=2)
         self.tree.grid(row=0, column=0)
         self.tree_scrollbar.grid(row=0, column=1, sticky=N + S)
         self.display_choice.grid(row=0, column=0)
         self.download_item.grid(row=0, column=1)
-        self.dl_status.grid(row=1, column=0, columnspan=2)
-        # self.progress.grid(row=2, column=0, columnspan=2)
+        self.mp3_btn.grid(row=1, column=1)
+        self.dl_status.grid(row=2, column=0, columnspan=2)
 
     def on_double_click(self, event):
         self.get_user_choice()
@@ -142,7 +138,6 @@ class Application(tk.Frame):
     def collect_search_result(self):
         """"Collects user entrys as variables"""
         self.search_ent = self.usr_search.get().replace(" ", "+")
-        self.search_type = self.vidtype.get()
         self.res_list = self.get_result_list()
         return self.res_list
 
@@ -163,35 +158,38 @@ class Application(tk.Frame):
         count = 1
         self.playlist_info = []
         self.clear_tree()
-        if self.search_type == "playlist":
-            try:
-                for item in search_results['items']:
-                    self.pl_data = new.yt.playlists().list(
-                        part="contentDetails",
-                        id=item['id']['playlistId']).execute()
+#        if self.search_type == "playlist":
+#            try:
+#                for item in search_results['items']:
+#                    self.pl_data = new.yt.playlists().list(
+#                       part="contentDetails",
+#                        id=item['id']['playlistId']).execute()
+#
+#                    for p in self.pl_data['items']:
+#                        self.playlist_info.append(
+#                            (item['snippet']['title'],
+#                             item['id']['playlistId'],
+#                             p['contentDetails']['itemCount']))
+#
+#                        self.tree.insert("", 'end', text=str(" "),
+#                                         values=(
+#                                             item['snippet']['title'],
+#                                             str(p['contentDetails'][
+#                                                     'itemCount']) +
+#                                             " videos"), tags="pl_")
+#                    count += 1
+#            except Exception, e:
+#                print(e)
+#        else:
+        for item in search_results['items']:
+            self.playlist_info.append((item['snippet']['title'],
+                                       item['id']['videoId']))
+            self.tree.insert("", '1', text=str(" "),
+                             values=(item['snippet']['title'],), tags="v_")
+            count += 1
 
-                    for p in self.pl_data['items']:
-                        self.playlist_info.append(
-                            (item['snippet']['title'],
-                             item['id']['playlistId'],
-                             p['contentDetails']['itemCount']))
-
-                        self.tree.insert("", 'end', text=str(" "),
-                                         values=(
-                                             item['snippet']['title'],
-                                             str(p['contentDetails'][
-                                                     'itemCount']) +
-                                             " videos"), tags="pl_")
-                    count += 1
-            except Exception, e:
-                print(e)
-        else:
-            for item in search_results['items']:
-                self.playlist_info.append((item['snippet']['title'],
-                                           item['id']['videoId']))
-                self.tree.insert("", '1', text=str(" "),
-                                 values=(item['snippet']['title'],), tags="v_")
-                count += 1
+    def start_search(self, event):
+        self.collect_and_populate_results()
 
     def collect_and_populate_results(self):
         self.r = self.collect_search_result()
@@ -211,11 +209,11 @@ class Application(tk.Frame):
             if i[0] == self.user_choice[0]:
                 return i[1]
 
-    def download_video(self, item_id):
+    def download_video(self, item_id, location):
         self.p = pafy.new(item_id, size=True)
         self.video = self.p.getbest(preftype="mp4")
         self.state.set("Downloading video...")
-        self.video.download(filepath="./Video/",
+        self.video.download(filepath=location,
                             quiet=True,
                             callback=self.progress_callback,
                             meta=True)
@@ -224,23 +222,28 @@ class Application(tk.Frame):
         self.update_idletasks()
         if recvd == total:
             self.state.set("Download complete.")
-        #self.progress["maximum"] = total
-        #self.progress_val += recvd
-        #self.progress['value'] = self.progress_val
-        #self.progress.update_idletasks()
 
-    def get_id_and_download(self):
-        """currently unused"""
-        # self.choice_id = self.find_user_choice_in_playlist_info()
-        self.download_video(self.choice_id)
+    def dl_ogg(self, item_id, location):
+        self.audio = pafy.new(item_id)
+        self.ogg = self.audio.getbestaudio(preftype="ogg")
+        self.ogg.download(filepath=location,
+                          callback=self.progress_callback,
+                          meta=True)
+        self.state.set("Starting conversion")
+        self.convert_to_mp3()
+        if os.path.isfile('./Audio/{}.mp3'.format(self.ogg.title)):
+            self.state.set("Conversion complete")
+
+    def convert_to_mp3(self):
+        self.fname = self.ogg.filename.encode('utf-8')
+        self.song = AudioSegment.from_file('./temp/{}'.format(self.fname))
+        self.song.export('./Audio/{}.mp3'.format(self.ogg.title), format="mp3")
+        os.remove("./temp/{}".format(self.fname))
 
 
-# set up dl from vid id
-# setup dl from playlist
-# tidy up
 
 
-# if __name__ == '__main__':
+
 root = tk.Tk()
 root.title('YT to mp3')
 root.update()
