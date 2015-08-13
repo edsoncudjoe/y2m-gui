@@ -1,4 +1,5 @@
 import os
+import threading
 import Tkinter as tk
 import ttk
 import pafy
@@ -83,7 +84,7 @@ class Application(tk.Frame):
         self.display_choice = tk.Text(self.choice_dl, x=0, y=50, width=83,
                                       height=2, wrap=tk.WORD)
         self.download_item = ttk.Button(self.choice_dl, text="Video",
-                                        command=lambda: self.download_video(
+                                        command=lambda: self.dl_vid(
                                             self.choice_id,
                                             location="./Video/"))
         self.mp3_btn = ttk.Button(self.choice_dl, text="Mp3",
@@ -91,6 +92,9 @@ class Application(tk.Frame):
                                       self.choice_id, location="./temp/"))
         self.dl_status = tk.Label(self.choice_dl, textvariable=self.state,
                                   width=80)
+        self.progbar = ttk.Progressbar(self.choice_dl, length=60,
+                                       mode='indeterminate',
+                                       orient=tk.HORIZONTAL,)
 
     def grid_widgets(self):
         self.search_ent.grid(row=0, column=0)
@@ -102,6 +106,7 @@ class Application(tk.Frame):
         self.download_item.grid(row=0, column=1)
         self.mp3_btn.grid(row=1, column=1)
         self.dl_status.grid(row=2, column=0, columnspan=2)
+        self.progbar.grid(row=3, column=0)
 
     def on_double_click(self, event):
         self.get_user_choice()
@@ -212,7 +217,7 @@ class Application(tk.Frame):
     def download_video(self, item_id, location):
         self.p = pafy.new(item_id, size=True)
         self.video = self.p.getbest(preftype="mp4")
-        self.state.set("Downloading video...")
+        self.state.set("Downloading video please wait...")
         self.video.download(filepath=location,
                             quiet=True,
                             callback=self.progress_callback,
@@ -222,6 +227,19 @@ class Application(tk.Frame):
         self.update_idletasks()
         if recvd == total:
             self.state.set("Download complete.")
+
+    def dl_vid(self, item_id, location):
+        self.p = pafy.new(item_id, size=True)
+        self.video = self.p.getbest(preftype="mp4")
+        self.state.set("Downloading video...")
+
+        def callback():
+            self.video.download(filepath=location,
+                                quiet=True,
+                                callback=self.progress_callback,
+                                meta=True)
+        t = threading.Thread(target=callback)
+        t.start()
 
     def dl_ogg(self, item_id, location):
         self.audio = pafy.new(item_id)
