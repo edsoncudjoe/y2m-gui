@@ -4,6 +4,8 @@ import ttk
 import pafy
 from pydub import AudioSegment
 from settings import YtSettings
+from tkFileDialog import askdirectory
+from dl_location import dl_loc
 
 N = tk.N
 S = tk.S
@@ -28,10 +30,13 @@ class Application(tk.Frame):
                                            text="results", padx=20, pady=20)
         self.choice_dl = tk.LabelFrame(self.parent, bg='gray93',
                                        text="download", padx=20, pady=20)
+        self.choice_btns = tk.Frame(self.choice_dl, bg='gray93', padx=10,
+                                    pady=10)
 
         self.search_frame.grid(row=0, column=0)
         self.results_frame.grid(row=1, column=0)
         self.choice_dl.grid(row=2, column=0)
+        self.choice_btns.grid(row=0, column=1, rowspan=2)
 
         self.create_variables()
         self.create_menubar()
@@ -44,9 +49,18 @@ class Application(tk.Frame):
         # self.type_options = ["Select type", "video", "playlist"]
         # self.vidtype.set(self.type_options[1])
         self.state = tk.StringVar()
+        self.download_dir = dl_loc
 
     def create_menubar(self):
-        pass
+        self.menubar = tk.Menu(self.parent)
+        self.filemenu = tk.Menu(self.menubar, tearoff=0,)
+        root.config(menu=self.menubar)
+
+        # File
+        self.menubar.add_cascade(label="File", menu=self.filemenu)
+        self.filemenu.add_command(label='Settings',
+                                  command=self.create_settings)
+
 
     def create_widgets(self):
         self.search_ent = ttk.Entry(self.search_frame, width=72,
@@ -80,17 +94,39 @@ class Application(tk.Frame):
         self.tree.configure(yscrollcommand=self.tree_scrollbar.set)
 
         # Dl
-        self.display_choice = tk.Text(self.choice_dl, x=0, y=50, width=83,
+        self.display_choice = tk.Text(self.choice_dl, x=0, y=50, width=79,
                                       height=2, wrap=tk.WORD)
-        self.download_item = ttk.Button(self.choice_dl, text="Video",
+        self.download_item = ttk.Button(self.choice_btns, text="Video",
                                         command=lambda: self.download_video(
                                             self.choice_id,
                                             location="./Video/"))
-        self.mp3_btn = ttk.Button(self.choice_dl, text="Mp3",
+        self.mp3_btn = ttk.Button(self.choice_btns, text="Mp3",
                                   command=lambda: self.dl_ogg(
                                       self.choice_id, location="./temp/"))
         self.dl_status = tk.Label(self.choice_dl, textvariable=self.state,
-                                  width=80)
+                                  width=70)
+
+    def create_settings(self):
+        self.location_settings = tk.Toplevel(self.parent, width=120,
+                                             height=50,
+                                             bg='gray93',
+                                             padx=10, pady=10)
+        self.main_settings = tk.Frame(self.location_settings,
+                                      bg='gray93', padx=10,
+                                      pady=20)
+        self.main_settings.grid()
+
+        self.location_label = ttk.Label(self.main_settings, text='Current '
+                                                                 'download '
+                                                                 'location: ')
+        self.location_display = tk.Label(self.main_settings, width=60)
+        self.location_change = ttk.Button(self.main_settings, text='Change',
+                                          command=self.set_directory)
+
+        self.location_label.grid(row=0, column=0)
+        self.location_display.grid(row=0, column=1)
+        self.location_change.grid(row=0, column=2)
+
 
     def grid_widgets(self):
         self.search_ent.grid(row=0, column=0)
@@ -99,9 +135,9 @@ class Application(tk.Frame):
         self.tree.grid(row=0, column=0)
         self.tree_scrollbar.grid(row=0, column=1, sticky=N + S)
         self.display_choice.grid(row=0, column=0)
-        self.download_item.grid(row=0, column=1)
-        self.mp3_btn.grid(row=1, column=1)
-        self.dl_status.grid(row=2, column=0, columnspan=2)
+        self.download_item.grid(row=0, column=0)
+        self.mp3_btn.grid(row=1, column=0)
+        self.dl_status.grid(row=2, column=0)
 
     def on_double_click(self, event):
         self.get_user_choice()
@@ -239,6 +275,13 @@ class Application(tk.Frame):
         self.song = AudioSegment.from_file('./temp/{}'.format(self.fname))
         self.song.export('./Audio/{}.mp3'.format(self.ogg.title), format="mp3")
         os.remove("./temp/{}".format(self.fname))
+
+    def set_directory(self):
+        self.download_dir = askdirectory()
+        with open('dl_location.py', 'w') as set_download:
+            set_download.write('dl_loc = \'{}\''.format(self.download_dir))
+
+        print self.download_dir
 
 
 
