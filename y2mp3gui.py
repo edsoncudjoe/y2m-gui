@@ -98,8 +98,7 @@ class Application(tk.Frame):
                                       height=2, wrap=tk.WORD)
         self.download_item = ttk.Button(self.choice_btns, text="Video",
                                         command=lambda: self.download_video(
-                                            self.choice_id,
-                                            location="./Video/"))
+                                            self.choice_id))
         self.mp3_btn = ttk.Button(self.choice_btns, text="Mp3",
                                   command=lambda: self.dl_ogg(
                                       self.choice_id, location="./temp/"))
@@ -194,29 +193,6 @@ class Application(tk.Frame):
         count = 1
         self.playlist_info = []
         self.clear_tree()
-#        if self.search_type == "playlist":
-#            try:
-#                for item in search_results['items']:
-#                    self.pl_data = new.yt.playlists().list(
-#                       part="contentDetails",
-#                        id=item['id']['playlistId']).execute()
-#
-#                    for p in self.pl_data['items']:
-#                        self.playlist_info.append(
-#                            (item['snippet']['title'],
-#                             item['id']['playlistId'],
-#                             p['contentDetails']['itemCount']))
-#
-#                        self.tree.insert("", 'end', text=str(" "),
-#                                         values=(
-#                                             item['snippet']['title'],
-#                                             str(p['contentDetails'][
-#                                                     'itemCount']) +
-#                                             " videos"), tags="pl_")
-#                    count += 1
-#            except Exception, e:
-#                print(e)
-#        else:
         for item in search_results['items']:
             self.playlist_info.append((item['snippet']['title'],
                                        item['id']['videoId']))
@@ -245,11 +221,12 @@ class Application(tk.Frame):
             if i[0] == self.user_choice[0]:
                 return i[1]
 
-    def download_video(self, item_id, location):
+    def download_video(self, item_id):
+        self.check_download_video_folder()
         self.p = pafy.new(item_id, size=True)
         self.video = self.p.getbest(preftype="mp4")
         self.state.set("Downloading video...")
-        self.video.download(filepath=location,
+        self.video.download(filepath=self.video_location.encode('utf-8'),
                             quiet=True,
                             callback=self.progress_callback,
                             meta=True)
@@ -277,15 +254,25 @@ class Application(tk.Frame):
         os.remove("./temp/{}".format(self.fname))
 
     def set_directory(self):
-        self.download_dir = askdirectory()
+        user_dir = askdirectory()
+        self.download_dir = user_dir + '/YT2Mp3/'
         with open('dl_location.py', 'w') as set_download:
-            set_download.write('dl_loc = \'{}\''.format(self.download_dir))
+            set_download.write('dl_loc = \'{}\''.format(
+                self.download_dir))
+        # Add to log file
+        # print self.download_dir
 
-        print self.download_dir
-
-
-
-
+    def check_download_video_folder(self):
+        """
+        Checks for separate video folder in download location. Creates
+        one if none is present
+        """
+        self.video_location = self.download_dir + 'Videos/'
+        try:
+            if not os.path.exists(self.video_location):
+                os.mkdir(self.video_location)
+        except Exception as e:
+            print(e)
 
 root = tk.Tk()
 root.title('YT to mp3')
