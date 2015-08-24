@@ -45,11 +45,10 @@ class Application(tk.Frame):
 
     def create_variables(self):
         self.usr_search = tk.StringVar()
-        # self.vidtype = tk.StringVar(self.search_frame)
-        # self.type_options = ["Select type", "video", "playlist"]
-        # self.vidtype.set(self.type_options[1])
         self.state = tk.StringVar()
         self.download_dir = dl_loc
+        self.download_loc_display = tk.StringVar()
+        self.download_loc_display.set(self.download_dir)
 
     def create_menubar(self):
         self.menubar = tk.Menu(self.parent)
@@ -66,9 +65,6 @@ class Application(tk.Frame):
         self.search_ent = ttk.Entry(self.search_frame, width=72,
                                     textvariable=self.usr_search)
         self.search_ent.bind('<Return>', self.start_search)
-        # self.type = apply(ttk.OptionMenu, (self.search_frame, self.vidtype) +
-        #                  tuple(self.type_options))
-        # self.type['width'] = 10
         self.search_btn = ttk.Button(self.search_frame, text="search",
                                      command=self.collect_and_populate_results)
 
@@ -101,7 +97,7 @@ class Application(tk.Frame):
                                             self.choice_id))
         self.mp3_btn = ttk.Button(self.choice_btns, text="Mp3",
                                   command=lambda: self.dl_ogg(
-                                      self.choice_id, location="./temp/"))
+                                      self.choice_id))
         self.dl_status = tk.Label(self.choice_dl, textvariable=self.state,
                                   width=70)
 
@@ -118,7 +114,8 @@ class Application(tk.Frame):
         self.location_label = ttk.Label(self.main_settings, text='Current '
                                                                  'download '
                                                                  'location: ')
-        self.location_display = tk.Label(self.main_settings, width=60)
+        self.location_display = tk.Label(self.main_settings, width=60,
+                                        textvariable=self.download_loc_display)
         self.location_change = ttk.Button(self.main_settings, text='Change',
                                           command=self.set_directory)
 
@@ -129,7 +126,6 @@ class Application(tk.Frame):
 
     def grid_widgets(self):
         self.search_ent.grid(row=0, column=0)
-        # self.type.grid(row=0, column=1)
         self.search_btn.grid(row=0, column=2)
         self.tree.grid(row=0, column=0)
         self.tree_scrollbar.grid(row=0, column=1, sticky=N + S)
@@ -226,7 +222,7 @@ class Application(tk.Frame):
         self.p = pafy.new(item_id, size=True)
         self.video = self.p.getbest(preftype="mp4")
         self.state.set("Downloading video...")
-        self.video.download(filepath=self.video_location.encode('utf-8'),
+        self.video.download(filepath=self.video_location,
                             quiet=True,
                             callback=self.progress_callback,
                             meta=True)
@@ -234,12 +230,13 @@ class Application(tk.Frame):
     def progress_callback(self, total, recvd, ratio, rate, eta):
         self.update_idletasks()
         if recvd == total:
-            self.state.set("Download complete.")
+            self.state.set('Download complete')
 
-    def dl_ogg(self, item_id, location):
+    def dl_ogg(self, item_id):
+        self.check_audio_download_folder()
         self.audio = pafy.new(item_id)
         self.ogg = self.audio.getbestaudio(preftype="ogg")
-        self.ogg.download(filepath=location,
+        self.ogg.download(filepath=self.temp_file,
                           callback=self.progress_callback,
                           meta=True)
         self.state.set("Starting conversion")
@@ -249,18 +246,20 @@ class Application(tk.Frame):
 
     def convert_to_mp3(self):
         self.fname = self.ogg.filename.encode('utf-8')
-        self.song = AudioSegment.from_file('./temp/{}'.format(self.fname))
+        self.working_file = self.temp_file + self.fname
+        self.song = AudioSegment.from_ogg('{}'.format(self.working_file))
         self.song.export('./Audio/{}.mp3'.format(self.ogg.title), format="mp3")
         os.remove("./temp/{}".format(self.fname))
 
     def set_directory(self):
+        print('Current dl directory: {}'.format(self.download_dir))
         user_dir = askdirectory()
         self.download_dir = user_dir + '/YT2Mp3/'
+        os.mkdir(self.download_dir)
+        self.download_loc_display.set(self.download_dir)
         with open('dl_location.py', 'w') as set_download:
             set_download.write('dl_loc = \'{}\''.format(
                 self.download_dir))
-        # Add to log file
-        # print self.download_dir
 
     def check_download_video_folder(self):
         """
@@ -268,11 +267,15 @@ class Application(tk.Frame):
         one if none is present
         """
         self.video_location = self.download_dir + 'Videos/'
-        try:
-            if not os.path.exists(self.video_location):
-                os.mkdir(self.video_location)
-        except Exception as e:
-            print(e)
+        if not os.path.exists(self.video_location):
+            os.mkdir(self.video_location)
+       
+    def check_audio_download_folder(self):
+        self.audio_location = self.download_dir + 'Audio/'
+        self.temp_file = self.audio_location + 'temp/'
+        if not os.path.exists(self.audio_location):
+            os.mkdir(self.audio_location)
+            os.mkdir(self.temp_file)
 
 root = tk.Tk()
 root.title('YT to mp3')

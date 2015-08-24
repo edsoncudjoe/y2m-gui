@@ -1,1 +1,1 @@
-dl_loc = '/Users/Edit4/Documents/Edson/j/YT2Mp3/'
+dl_loc = '/home/dev/projects/yt2mp3/YT2Mp3/'
