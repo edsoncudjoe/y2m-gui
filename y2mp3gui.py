@@ -82,7 +82,7 @@ class Application(tk.Frame):
         self.tree.heading("Name", text="Name",
                           command=lambda: self.treeview_sort(
                               self.tree, "Name", False))
-        self.tree.heading("Items", text="Items",
+        self.tree.heading("Items", text="Duration",
                           command=lambda: self.treeview_sort(
                               self.tree, "Items", False))
 
@@ -185,16 +185,33 @@ class Application(tk.Frame):
         self.result = self.result_command.execute()
         return self.result
 
+    def get_title_duration(self, item):
+        duration_call = new.yt.videos().list(part="contentDetails",
+                                                      id=item['id']['videoId'])
+        self.duration_call = duration_call.execute()
+
     def populate_treeview(self, search_results):
         """Displays search results from the data api."""
         count = 1
         self.playlist_info = []
         self.clear_tree()
         for item in search_results['items']:
+#            duration_call = new.yt.videos().list(part="contentDetails",
+#                                                      id=item['id'][
+# 'videoId'])
+#            self.duration_call = duration_call.execute()
+
+            self.get_title_duration(item)
             self.playlist_info.append((item['snippet']['title'],
-                                       item['id']['videoId']))
+                                       item['id']['videoId'],
+                                       self.duration_call['items'][0][
+                                           'contentDetails'][
+                                           'duration'].encode('utf-8')))
+
             self.tree.insert("", '1', text=str(" "),
-                             values=(item['snippet']['title'],), tags="v_")
+                             values=(item['snippet']['title'],
+                                     self.playlist_info[count-1][2]),
+                             tags="v_")
             count += 1
 
     def start_search(self, event):
