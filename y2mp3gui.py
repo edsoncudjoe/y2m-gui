@@ -2,6 +2,7 @@ import os
 import Tkinter as tk
 import ttk
 import pafy
+import re
 from pydub import AudioSegment
 from settings import YtSettings
 from tkFileDialog import askdirectory
@@ -196,21 +197,16 @@ class Application(tk.Frame):
         self.playlist_info = []
         self.clear_tree()
         for item in search_results['items']:
-#            duration_call = new.yt.videos().list(part="contentDetails",
-#                                                      id=item['id'][
-# 'videoId'])
-#            self.duration_call = duration_call.execute()
-
             self.get_title_duration(item)
             self.playlist_info.append((item['snippet']['title'],
                                        item['id']['videoId'],
                                        self.duration_call['items'][0][
                                            'contentDetails'][
                                            'duration'].encode('utf-8')))
-
+            m = re.search(r'(\d+\w+)', self.playlist_info[count-1][2])
             self.tree.insert("", '1', text=str(" "),
                              values=(item['snippet']['title'],
-                                     self.playlist_info[count-1][2]),
+                                     m.group()),
                              tags="v_")
             count += 1
 
