@@ -328,7 +328,6 @@ root = tk.Tk()
 root.title('YT to mp3')
 root.update()
 root.minsize(root.winfo_width(), root.winfo_height())
-# yt = Yt()
 app = Application(root)
 
 root.mainloop()
