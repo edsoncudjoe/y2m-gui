@@ -241,15 +241,17 @@ class Application(tk.Frame):
                           meta=True)
         self.state.set("Starting conversion")
         self.convert_to_mp3()
-        if os.path.isfile('./Audio/{}.mp3'.format(self.ogg.title)):
+        if os.path.isfile(self.audio_location + '{}.mp3'.format(
+                self.ogg.title)):
             self.state.set("Conversion complete")
 
     def convert_to_mp3(self):
         self.fname = self.ogg.filename.encode('utf-8')
         self.working_file = self.temp_file + self.fname
-        self.song = AudioSegment.from_ogg('{}'.format(self.working_file))
-        self.song.export('./Audio/{}.mp3'.format(self.ogg.title), format="mp3")
-        os.remove("./temp/{}".format(self.fname))
+        self.song = AudioSegment.from_file(self.working_file)
+        self.song.export(self.audio_location + '{}.mp3'.format(
+            self.ogg.title), format="mp3")
+        os.remove(self.working_file)
 
     def set_directory(self):
         print('Current dl directory: {}'.format(self.download_dir))
@@ -272,9 +274,11 @@ class Application(tk.Frame):
        
     def check_audio_download_folder(self):
         self.audio_location = self.download_dir + 'Audio/'
-        self.temp_file = self.audio_location + 'temp/'
+        self.temp_file = self.download_dir + 'temp/'
         if not os.path.exists(self.audio_location):
             os.mkdir(self.audio_location)
+        print(self.temp_file)
+        if not os.path.exists(self.temp_file):
             os.mkdir(self.temp_file)
 
 root = tk.Tk()
