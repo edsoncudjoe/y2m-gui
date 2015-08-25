@@ -19,6 +19,11 @@ new = YtSettings()
 
 
 class Application(tk.Frame):
+
+    """
+    GUI for searching YouTube Data API for video URL's. Downloads video and
+    mp3 file to user specified location
+    """
     def __init__(self, parent):
         tk.Frame.__init__(self, parent)
         self.parent = parent
@@ -144,6 +149,9 @@ class Application(tk.Frame):
         self.choice_id = self.find_user_choice_in_playlist_info()
 
     def treeview_sort(self, tv, col, reverse):
+        """
+        Sorts treeview listing in alphabetical order
+        """
         l = [(tv.set(k, col), k) for k in tv.get_children('')]
         l.sort(reverse=reverse)
 
@@ -152,8 +160,8 @@ class Application(tk.Frame):
             tv.move(k, '', index)
 
         # reverse sort next time
-        tv.heading(col, command=lambda: \
-            self.treeview_sort(tv, col, not reverse))
+        tv.heading(col, command=lambda: self.treeview_sort(tv, col,
+                                                           not reverse))
 
     def print_uri(self):
         """
@@ -187,12 +195,18 @@ class Application(tk.Frame):
         return self.result
 
     def get_title_duration(self, item):
+        """
+        Used for iteration loop to collect video duration
+        """
         duration_call = new.yt.videos().list(part="contentDetails",
                                                       id=item['id']['videoId'])
         self.duration_call = duration_call.execute()
 
     def populate_treeview(self, search_results):
-        """Displays search results from the data api."""
+        """
+        Displays search results from the data api.
+        Collects title, ID and duration details of each title
+        """
         count = 1
         self.playlist_info = []
         self.clear_tree()
@@ -247,6 +261,7 @@ class Application(tk.Frame):
             self.state.set('Download complete')
 
     def dl_ogg(self, item_id):
+        """Downloads ogg file to a temp directory to be converted to mp3"""
         self.check_audio_download_folder()
         self.audio = pafy.new(item_id)
         self.ogg = self.audio.getbestaudio(preftype="ogg")
@@ -260,6 +275,7 @@ class Application(tk.Frame):
             self.state.set("Conversion complete")
 
     def convert_to_mp3(self):
+        """Converts .ogg file in temp directory to mp3"""
         self.fname = self.ogg.filename.encode('utf-8')
         self.working_file = self.temp_file + self.fname
         self.song = AudioSegment.from_file(self.working_file)
@@ -287,6 +303,10 @@ class Application(tk.Frame):
             os.mkdir(self.video_location)
        
     def check_audio_download_folder(self):
+        """
+        Checks for separate audio folder in download location. Creates
+        one if none is present
+        """
         self.audio_location = self.download_dir + 'Audio/'
         self.temp_file = self.download_dir + 'temp/'
         try:
