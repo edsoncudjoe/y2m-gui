@@ -3,8 +3,12 @@ import threading
 import Tkinter as tk
 import ttk
 import pafy
+import re
 from pydub import AudioSegment
 from settings import YtSettings
+from tkFileDialog import askdirectory
+import tkMessageBox
+from dl_location import dl_loc
 
 N = tk.N
 S = tk.S
@@ -15,6 +19,11 @@ END = tk.END
 new = YtSettings()
 
 class Application(tk.Frame):
+
+    """
+    GUI for searching YouTube Data API for video URL's. Downloads video and
+    mp3 file to user specified location
+    """
     def __init__(self, parent):
         tk.Frame.__init__(self, parent)
         self.parent = parent
@@ -28,10 +37,13 @@ class Application(tk.Frame):
                                            text="results", padx=20, pady=20)
         self.choice_dl = tk.LabelFrame(self.parent, bg='gray93',
                                        text="download", padx=20, pady=20)
+        self.choice_btns = tk.Frame(self.choice_dl, bg='gray93', padx=10,
+                                    pady=10)
 
         self.search_frame.grid(row=0, column=0)
         self.results_frame.grid(row=1, column=0)
         self.choice_dl.grid(row=2, column=0)
+        self.choice_btns.grid(row=0, column=1, rowspan=2)
 
         self.create_variables()
         self.create_menubar()
@@ -41,9 +53,20 @@ class Application(tk.Frame):
     def create_variables(self):
         self.usr_search = tk.StringVar()
         self.state = tk.StringVar()
+        self.download_dir = dl_loc
+        self.download_loc_display = tk.StringVar()
+        self.download_loc_display.set(self.download_dir)
 
     def create_menubar(self):
-        pass
+        self.menubar = tk.Menu(self.parent)
+        self.filemenu = tk.Menu(self.menubar, tearoff=0,)
+        root.config(menu=self.menubar)
+
+        # File
+        self.menubar.add_cascade(label="File", menu=self.filemenu)
+        self.filemenu.add_command(label='Settings',
+                                  command=self.create_settings)
+
 
     def create_widgets(self):
         self.search_ent = ttk.Entry(self.search_frame, width=72,
@@ -64,7 +87,7 @@ class Application(tk.Frame):
         self.tree.heading("Name", text="Name",
                           command=lambda: self.treeview_sort(
                               self.tree, "Name", False))
-        self.tree.heading("Items", text="Items",
+        self.tree.heading("Items", text="Duration",
                           command=lambda: self.treeview_sort(
                               self.tree, "Items", False))
 
@@ -73,28 +96,57 @@ class Application(tk.Frame):
         self.tree.configure(yscrollcommand=self.tree_scrollbar.set)
 
         # Dl
-        self.display_choice = tk.Text(self.choice_dl, x=0, y=50, width=83,
+        self.display_choice = tk.Text(self.choice_dl, x=0, y=50, width=79,
                                       height=2, wrap=tk.WORD)
+<<<<<<< HEAD
         self.download_item = ttk.Button(self.choice_dl, text="Video",
                                         command=lambda: self.dl_vid(
                                             self.choice_id,
                                             location="./Video/"))
         self.mp3_btn = ttk.Button(self.choice_dl, text="Mp3",
+=======
+        self.download_item = ttk.Button(self.choice_btns, text="Video",
+                                        command=lambda: self.download_video(
+                                            self.choice_id))
+        self.mp3_btn = ttk.Button(self.choice_btns, text="Mp3",
+>>>>>>> lebronjames
                                   command=lambda: self.dl_ogg(
-                                      self.choice_id, location="./temp/"))
+                                      self.choice_id))
         self.dl_status = tk.Label(self.choice_dl, textvariable=self.state,
-                                  width=80)
+                                  width=70)
+
+    def create_settings(self):
+        self.location_settings = tk.Toplevel(self.parent, width=120,
+                                             height=50,
+                                             bg='gray93',
+                                             padx=10, pady=10)
+        self.main_settings = tk.Frame(self.location_settings,
+                                      bg='gray93', padx=10,
+                                      pady=20)
+        self.main_settings.grid()
+
+        self.location_label = ttk.Label(self.main_settings, text='Current '
+                                                                 'download '
+                                                                 'location: ')
+        self.location_display = tk.Label(self.main_settings, width=60,
+                                        textvariable=self.download_loc_display)
+        self.location_change = ttk.Button(self.main_settings, text='Change',
+                                          command=self.set_directory)
+
+        self.location_label.grid(row=0, column=0)
+        self.location_display.grid(row=0, column=1)
+        self.location_change.grid(row=0, column=2)
+
 
     def grid_widgets(self):
         self.search_ent.grid(row=0, column=0)
-        # self.type.grid(row=0, column=1)
         self.search_btn.grid(row=0, column=2)
         self.tree.grid(row=0, column=0)
         self.tree_scrollbar.grid(row=0, column=1, sticky=N + S)
         self.display_choice.grid(row=0, column=0)
-        self.download_item.grid(row=0, column=1)
-        self.mp3_btn.grid(row=1, column=1)
-        self.dl_status.grid(row=2, column=0, columnspan=2)
+        self.download_item.grid(row=0, column=0)
+        self.mp3_btn.grid(row=1, column=0)
+        self.dl_status.grid(row=2, column=0)
 
     def on_double_click(self, event):
         self.get_user_choice()
@@ -104,6 +156,9 @@ class Application(tk.Frame):
         self.choice_id = self.find_user_choice_in_playlist_info()
 
     def treeview_sort(self, tv, col, reverse):
+        """
+        Sorts treeview listing in alphabetical order
+        """
         l = [(tv.set(k, col), k) for k in tv.get_children('')]
         l.sort(reverse=reverse)
 
@@ -112,8 +167,8 @@ class Application(tk.Frame):
             tv.move(k, '', index)
 
         # reverse sort next time
-        tv.heading(col, command=lambda: \
-            self.treeview_sort(tv, col, not reverse))
+        tv.heading(col, command=lambda: self.treeview_sort(tv, col,
+                                                           not reverse))
 
     def print_uri(self):
         """
@@ -146,16 +201,34 @@ class Application(tk.Frame):
         self.result = self.result_command.execute()
         return self.result
 
+    def get_title_duration(self, item):
+        """
+        Used for iteration loop to collect video duration
+        """
+        duration_call = new.yt.videos().list(part="contentDetails",
+                                                      id=item['id']['videoId'])
+        self.duration_call = duration_call.execute()
+
     def populate_treeview(self, search_results):
-        """Displays search results from the data api."""
+        """
+        Displays search results from the data api.
+        Collects title, ID and duration details of each title
+        """
         count = 1
         self.playlist_info = []
         self.clear_tree()
         for item in search_results['items']:
+            self.get_title_duration(item)
             self.playlist_info.append((item['snippet']['title'],
-                                       item['id']['videoId']))
+                                       item['id']['videoId'],
+                                       self.duration_call['items'][0][
+                                           'contentDetails'][
+                                           'duration'].encode('utf-8')))
+            m = re.search(r'(\d+\w+)', self.playlist_info[count-1][2])
             self.tree.insert("", '1', text=str(" "),
-                             values=(item['snippet']['title'],), tags="v_")
+                             values=(item['snippet']['title'],
+                                     m.group()),
+                             tags="v_")
             count += 1
 
     def start_search(self, event):
@@ -179,11 +252,17 @@ class Application(tk.Frame):
             if i[0] == self.user_choice[0]:
                 return i[1]
 
-    def download_video(self, item_id, location):
+    def download_video(self, item_id):
+        self.check_download_video_folder()
         self.p = pafy.new(item_id, size=True)
         self.video = self.p.getbest(preftype="mp4")
+<<<<<<< HEAD
         self.state.set("Downloading video please wait...")
         self.video.download(filepath=location,
+=======
+        self.state.set("Downloading video...")
+        self.video.download(filepath=self.video_location,
+>>>>>>> lebronjames
                             quiet=True,
                             callback=self.progress_callback,
                             meta=True)
@@ -191,8 +270,9 @@ class Application(tk.Frame):
     def progress_callback(self, total, recvd, ratio, rate, eta):
         self.update_idletasks()
         if recvd == total:
-            self.state.set("Download complete.")
+            self.state.set('Download complete')
 
+<<<<<<< HEAD
     def dl_vid(self, item_id, location):
         self.p = pafy.new(item_id, size=True)
         self.video = self.p.getbest(preftype="mp4")
@@ -207,22 +287,78 @@ class Application(tk.Frame):
         t.start()
 
     def dl_ogg(self, item_id, location):
+=======
+    def dl_ogg(self, item_id):
+        """Downloads ogg file to a temp directory to be converted to mp3"""
+        self.check_audio_download_folder()
+>>>>>>> lebronjames
         self.audio = pafy.new(item_id)
         self.ogg = self.audio.getbestaudio(preftype="ogg")
-        self.ogg.download(filepath=location,
+        self.ogg.download(filepath=self.temp_file,
                           callback=self.progress_callback,
                           meta=True)
         self.state.set("Starting conversion")
         self.convert_to_mp3()
-        if os.path.isfile('./Audio/{}.mp3'.format(self.ogg.title)):
+        if os.path.isfile(self.audio_location + '{}.mp3'.format(
+                self.ogg.title)):
             self.state.set("Conversion complete")
 
     def convert_to_mp3(self):
+        """Converts .ogg file in temp directory to mp3"""
         self.fname = self.ogg.filename.encode('utf-8')
+<<<<<<< HEAD
         self.song = AudioSegment.from_file('./temp/{}'.format(self.fname))
         self.song.export('./Audio/{}.mp3'.format(self.ogg.title), format="mp3")
         os.remove("./temp/{}".format(self.fname))
 
+=======
+        self.working_file = self.temp_file + self.fname
+        self.song = AudioSegment.from_file(self.working_file)
+        self.song.export(self.audio_location + '{}.mp3'.format(
+            self.ogg.title), format="mp3")
+        os.remove(self.working_file)
+
+    def set_directory(self):
+        print('Current dl directory: {}'.format(self.download_dir))
+        user_dir = askdirectory()
+        self.download_dir = user_dir + '/YT2Mp3/'
+        os.mkdir(self.download_dir)
+        self.download_loc_display.set(self.download_dir)
+        with open('dl_location.py', 'w') as set_download:
+            set_download.write('dl_loc = \'{}\''.format(
+                self.download_dir))
+
+    def check_download_video_folder(self):
+        """
+        Checks for separate video folder in download location. Creates
+        one if none is present
+        """
+        self.video_location = self.download_dir + 'Videos/'
+        if not os.path.exists(self.video_location):
+            os.mkdir(self.video_location)
+       
+    def check_audio_download_folder(self):
+        """
+        Checks for separate audio folder in download location. Creates
+        one if none is present
+        """
+        self.audio_location = self.download_dir + 'Audio/'
+        self.temp_file = self.download_dir + 'temp/'
+        try:
+            if not os.path.exists(self.audio_location):
+                os.mkdir(self.audio_location)
+            print(self.temp_file)
+            if not os.path.exists(self.temp_file):
+                os.mkdir(self.temp_file)
+        except OSError as e:
+            tkMessageBox.showwarning(title='Download folder '
+                                           'missing',
+                                     message='Unable to find the download '
+                                             'folder. \nPlease check that you '
+                                             'still have it saved. \n\nLast '
+                                             'known location: \n{}'.format(
+                self.download_dir))
+>>>>>>> lebronjames
 
 root = tk.Tk()
 root.title('YT to mp3')
