@@ -5,6 +5,7 @@ import pafy
 from pydub import AudioSegment
 from settings import YtSettings
 from tkFileDialog import askdirectory
+import tkMessageBox
 from dl_location import dl_loc
 
 N = tk.N
@@ -275,11 +276,20 @@ class Application(tk.Frame):
     def check_audio_download_folder(self):
         self.audio_location = self.download_dir + 'Audio/'
         self.temp_file = self.download_dir + 'temp/'
-        if not os.path.exists(self.audio_location):
-            os.mkdir(self.audio_location)
-        print(self.temp_file)
-        if not os.path.exists(self.temp_file):
-            os.mkdir(self.temp_file)
+        try:
+            if not os.path.exists(self.audio_location):
+                os.mkdir(self.audio_location)
+            print(self.temp_file)
+            if not os.path.exists(self.temp_file):
+                os.mkdir(self.temp_file)
+        except OSError as e:
+            tkMessageBox.showwarning(title='Download folder '
+                                           'missing',
+                                     message='Unable to find the download '
+                                             'folder. \nPlease check that you '
+                                             'still have it saved. \n\nLast '
+                                             'known location: \n{}'.format(
+                self.download_dir))
 
 root = tk.Tk()
 root.title('YT to mp3')
