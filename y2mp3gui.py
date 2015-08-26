@@ -69,9 +69,9 @@ class Application(tk.Frame):
 
 
     def create_widgets(self):
-        self.search_ent = ttk.Entry(self.search_frame, width=72,
+        self.search_entry = ttk.Entry(self.search_frame, width=72,
                                     textvariable=self.usr_search)
-        self.search_ent.bind('<Return>', self.start_search)
+        self.search_entry.bind('<Return>', self.start_search)
         self.search_btn = ttk.Button(self.search_frame, text="search",
                                      command=self.collect_and_populate_results)
 
@@ -103,7 +103,7 @@ class Application(tk.Frame):
                                         command=lambda: self.download_video(
                                             self.choice_id))
         self.mp3_btn = ttk.Button(self.choice_btns, text="Mp3",
-                                  command=lambda: self.dl_ogg(
+                                  command=lambda: self.download_ogg(
                                       self.choice_id))
         self.dl_status = tk.Label(self.choice_dl, textvariable=self.state,
                                   width=70)
@@ -132,7 +132,7 @@ class Application(tk.Frame):
 
 
     def grid_widgets(self):
-        self.search_ent.grid(row=0, column=0)
+        self.search_entry.grid(row=0, column=0)
         self.search_btn.grid(row=0, column=2)
         self.tree.grid(row=0, column=0)
         self.tree_scrollbar.grid(row=0, column=1, sticky=N + S)
@@ -178,7 +178,7 @@ class Application(tk.Frame):
 
     def collect_search_result(self):
         """"Collects user entrys as variables"""
-        self.search_ent = self.usr_search.get().replace(" ", "+")
+        self.search_entry = self.usr_search.get().replace(" ", "+")
         self.res_list = self.get_result_list()
         return self.res_list
 
@@ -188,7 +188,7 @@ class Application(tk.Frame):
         Returns search results as list
         """
         self.result_command = new.yt.search().list(part="snippet",
-                                                   q=self.search_ent,
+                                                   q=self.search_entry,
                                                    type=self.search_type,
                                                    maxResults=new.DEFAULT)
         self.result = self.result_command.execute()
@@ -196,13 +196,14 @@ class Application(tk.Frame):
 
     def get_title_duration(self, item):
         """
-        Used for iteration loop to collect video duration
+        Used in populate_tree_view() iteration to collect video duration based
+        on the video ID
         """
         duration_call = new.yt.videos().list(part="contentDetails",
                                                       id=item['id']['videoId'])
         self.duration_call = duration_call.execute()
 
-    def populate_treeview(self, search_results):
+    def populate_tree_view(self, search_results):
         """
         Displays search results from the data api.
         Collects title, ID and duration details of each title
@@ -229,7 +230,7 @@ class Application(tk.Frame):
 
     def collect_and_populate_results(self):
         self.r = self.collect_search_result()
-        self.populate_treeview(self.r)
+        self.populate_tree_view(self.r)
 
     def clear_tree(self):
         for i in self.tree.get_children():
@@ -260,7 +261,7 @@ class Application(tk.Frame):
         if recvd == total:
             self.state.set('Download complete')
 
-    def dl_ogg(self, item_id):
+    def download_ogg(self, item_id):
         """Downloads ogg file to a temp directory to be converted to mp3"""
         self.check_audio_download_folder()
         self.audio = pafy.new(item_id)
@@ -284,6 +285,11 @@ class Application(tk.Frame):
         os.remove(self.working_file)
 
     def set_directory(self):
+        """
+        User selects directory they wish to download to.
+        This function will set the download location to the chosen
+        destination and write the location into a settings file.
+        """
         print('Current dl directory: {}'.format(self.download_dir))
         user_dir = askdirectory()
         self.download_dir = user_dir + '/YT2Mp3/'
@@ -312,8 +318,7 @@ class Application(tk.Frame):
         try:
             if not os.path.exists(self.audio_location):
                 os.mkdir(self.audio_location)
-            print(self.temp_file)
-            if not os.path.exists(self.temp_file):
+            elif not os.path.exists(self.temp_file):
                 os.mkdir(self.temp_file)
         except OSError as e:
             tkMessageBox.showwarning(title='Download folder '
