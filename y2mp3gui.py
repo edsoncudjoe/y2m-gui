@@ -3,6 +3,7 @@ import Tkinter as tk
 import ttk
 import pafy
 import re
+import threading
 from pydub import AudioSegment
 from settings import YtSettings
 from tkFileDialog import askdirectory
@@ -247,14 +248,17 @@ class Application(tk.Frame):
                 return i[1]
 
     def download_video(self, item_id):
-        self.check_download_video_folder()
-        self.p = pafy.new(item_id, size=True)
-        self.video = self.p.getbest(preftype="mp4")
-        self.state.set("Downloading video...")
-        self.video.download(filepath=self.video_location,
-                            quiet=True,
-                            callback=self.progress_callback,
-                            meta=True)
+        def callback():
+            self.check_download_video_folder()
+            self.p = pafy.new(item_id, size=True)
+            self.video = self.p.getbest(preftype="mp4")
+            self.state.set("Downloading video...")
+            self.video.download(filepath=self.video_location,
+                                quiet=True,
+                                callback=self.progress_callback,
+                                meta=True)
+        t = threading.Thread(name='vid_download', target=callback)
+        t.start()
 
     def progress_callback(self, total, recvd, ratio, rate, eta):
         self.update_idletasks()
@@ -263,17 +267,20 @@ class Application(tk.Frame):
 
     def download_ogg(self, item_id):
         """Downloads ogg file to a temp directory to be converted to mp3"""
-        self.check_audio_download_folder()
-        self.audio = pafy.new(item_id)
-        self.ogg = self.audio.getbestaudio(preftype="ogg")
-        self.ogg.download(filepath=self.temp_file,
-                          callback=self.progress_callback,
-                          meta=True)
-        self.state.set("Starting conversion")
-        self.convert_to_mp3()
-        if os.path.isfile(self.audio_location + '{}.mp3'.format(
-                self.ogg.title)):
-            self.state.set("Conversion complete")
+        def callback():
+            self.check_audio_download_folder()
+            self.audio = pafy.new(item_id)
+            self.ogg = self.audio.getbestaudio(preftype="ogg")
+            self.ogg.download(filepath=self.temp_file,
+                              callback=self.progress_callback,
+                              meta=True)
+            self.state.set("Starting conversion")
+            self.convert_to_mp3()
+            if os.path.isfile(self.audio_location + '{}.mp3'.format(
+                    self.ogg.title.encode('utf-8'))):
+                self.state.set("Conversion complete")
+        t_ogg = threading.Thread(name='ogg_download', target=callback)
+        t_ogg.start()
 
     def convert_to_mp3(self):
         """Converts .ogg file in temp directory to mp3"""
@@ -281,7 +288,7 @@ class Application(tk.Frame):
         self.working_file = self.temp_file + self.fname
         self.song = AudioSegment.from_file(self.working_file)
         self.song.export(self.audio_location + '{}.mp3'.format(
-            self.ogg.title), format="mp3")
+            self.ogg.title.encode('utf-8')), format="mp3")
         os.remove(self.working_file)
 
     def set_directory(self):
@@ -318,7 +325,7 @@ class Application(tk.Frame):
         try:
             if not os.path.exists(self.audio_location):
                 os.mkdir(self.audio_location)
-            elif not os.path.exists(self.temp_file):
+            if not os.path.exists(self.temp_file):
                 os.mkdir(self.temp_file)
         except OSError as e:
             tkMessageBox.showwarning(title='Download folder '
