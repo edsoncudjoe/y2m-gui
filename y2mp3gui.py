@@ -99,12 +99,12 @@ class Application(tk.Frame):
         # Dl
         self.display_choice = tk.Text(self.choice_dl, x=0, y=50, width=79,
                                       height=2, wrap=tk.WORD)
+
         self.download_item = ttk.Button(self.choice_btns, text="Video",
-                                        command=lambda: self.download_video(
-                                            self.choice_id))
+                                        command=lambda:
+                                        self.download_video_callback())
         self.mp3_btn = ttk.Button(self.choice_btns, text="Mp3",
-                                  command=lambda: self.download_ogg(
-                                      self.choice_id))
+                                  command=lambda: self.download_ogg_callback())
         self.dl_status = tk.Label(self.choice_dl, textvariable=self.state,
                                   width=70)
 
@@ -328,6 +328,25 @@ class Application(tk.Frame):
                                              'still have it saved. \n\nLast '
                                              'known location: \n{}'.format(
                 self.download_dir))
+
+    def download_video_callback(self):
+        try:
+            self.download_video(self.choice_id)
+        except AttributeError as e:
+            tkMessageBox.showwarning(title='No video ID', message="Select a "
+                                                                  "video "
+                                                                  "from the "
+                                                                  "list first")
+
+    def download_ogg_callback(self):
+        try:
+            self.download_ogg(self.choice_id)
+        except AttributeError:
+            tkMessageBox.showwarning(title='No video ID', message="Select a "
+                                                                  "title "
+                                                                  "from the "
+                                                                  "list first")
+
 
 root = tk.Tk()
 root.title('YT to mp3')

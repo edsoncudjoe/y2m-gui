@@ -1,6 +1,4 @@
 from apiclient.discovery import build
-from apiclient.errors import HttpError
-
 
 
 class YtSettings(object):
