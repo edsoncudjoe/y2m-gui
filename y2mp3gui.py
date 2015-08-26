@@ -20,11 +20,11 @@ new = YtSettings()
 
 
 class Application(tk.Frame):
-
     """
     GUI for searching YouTube Data API for video URL's. Downloads video and
     mp3 file to user specified location
     """
+
     def __init__(self, parent):
         tk.Frame.__init__(self, parent)
         self.parent = parent
@@ -60,7 +60,7 @@ class Application(tk.Frame):
 
     def create_menubar(self):
         self.menubar = tk.Menu(self.parent)
-        self.filemenu = tk.Menu(self.menubar, tearoff=0,)
+        self.filemenu = tk.Menu(self.menubar, tearoff=0, )
         root.config(menu=self.menubar)
 
         # File
@@ -68,10 +68,9 @@ class Application(tk.Frame):
         self.filemenu.add_command(label='Settings',
                                   command=self.create_settings)
 
-
     def create_widgets(self):
         self.search_entry = ttk.Entry(self.search_frame, width=72,
-                                    textvariable=self.usr_search)
+                                      textvariable=self.usr_search)
         self.search_entry.bind('<Return>', self.start_search)
         self.search_btn = ttk.Button(self.search_frame, text="search",
                                      command=self.collect_and_populate_results)
@@ -106,8 +105,10 @@ class Application(tk.Frame):
                                         self.download_video_callback())
         self.mp3_btn = ttk.Button(self.choice_btns, text="Mp3",
                                   command=lambda: self.download_ogg_callback())
-        self.dl_status = tk.Label(self.choice_dl, textvariable=self.state,
-                                  width=70)
+        self.dl_status = tk.Label(self.parent, textvariable=self.state,
+                                  bd=1, relief=tk.SUNKEN, anchor=W,
+                                  bg='#424242', fg='#ffffff', pady=3)
+        self.choice_dl.grid_columnconfigure(0, weight=1)
 
     def create_settings(self):
         self.location_settings = tk.Toplevel(self.parent, width=120,
@@ -123,14 +124,13 @@ class Application(tk.Frame):
                                                                  'download '
                                                                  'location: ')
         self.location_display = tk.Label(self.main_settings, width=60,
-                                        textvariable=self.download_loc_display)
+                                         textvariable=self.download_loc_display)
         self.location_change = ttk.Button(self.main_settings, text='Change',
                                           command=self.set_directory)
 
         self.location_label.grid(row=0, column=0)
         self.location_display.grid(row=0, column=1)
         self.location_change.grid(row=0, column=2)
-
 
     def grid_widgets(self):
         self.search_entry.grid(row=0, column=0)
@@ -140,7 +140,7 @@ class Application(tk.Frame):
         self.display_choice.grid(row=0, column=0)
         self.download_item.grid(row=0, column=0)
         self.mp3_btn.grid(row=1, column=0)
-        self.dl_status.grid(row=2, column=0)
+        self.dl_status.grid(row=2, column=0, sticky=W+E+S)
 
     def on_double_click(self, event):
         self.get_user_choice()
@@ -201,7 +201,7 @@ class Application(tk.Frame):
         on the video ID
         """
         duration_call = new.yt.videos().list(part="contentDetails",
-                                                      id=item['id']['videoId'])
+                                             id=item['id']['videoId'])
         self.duration_call = duration_call.execute()
 
     def populate_tree_view(self, search_results):
@@ -219,7 +219,7 @@ class Application(tk.Frame):
                                        self.duration_call['items'][0][
                                            'contentDetails'][
                                            'duration'].encode('utf-8')))
-            m = re.search(r'(\d+\w+)', self.playlist_info[count-1][2])
+            m = re.search(r'(\d+\w+)', self.playlist_info[count - 1][2])
             self.tree.insert("", '1', text=str(" "),
                              values=(item['snippet']['title'],
                                      m.group()),
@@ -248,15 +248,21 @@ class Application(tk.Frame):
                 return i[1]
 
     def download_video(self, item_id):
+        self.state.set('Preparing download please wait')
         def callback():
-            self.check_download_video_folder()
-            self.p = pafy.new(item_id, size=True)
-            self.video = self.p.getbest(preftype="mp4")
-            self.state.set("Downloading video...")
-            self.video.download(filepath=self.video_location,
-                                quiet=True,
-                                callback=self.progress_callback,
-                                meta=True)
+            try:
+                self.check_download_video_folder()
+                self.p = pafy.new(item_id, size=True)
+                self.video = self.p.getbest(preftype="mp4")
+                self.state.set("Downloading video...")
+                self.video.download(filepath=self.video_location,
+                                    quiet=True,
+                                    callback=self.progress_callback,
+                                    meta=True)
+            except Exception as e:
+                print(e)
+                self.missing_folder_warning()
+
         t = threading.Thread(name='vid_download', target=callback)
         t.start()
 
@@ -266,19 +272,28 @@ class Application(tk.Frame):
             self.state.set('Download complete')
 
     def download_ogg(self, item_id):
-        """Downloads ogg file to a temp directory to be converted to mp3"""
+        """
+        Downloads ogg file to a temp directory to be converted to mp3
+        """
+        self.state.set('Preparing download please wait')
         def callback():
-            self.check_audio_download_folder()
-            self.audio = pafy.new(item_id)
-            self.ogg = self.audio.getbestaudio(preftype="ogg")
-            self.ogg.download(filepath=self.temp_file,
-                              callback=self.progress_callback,
-                              meta=True)
-            self.state.set("Starting conversion")
-            self.convert_to_mp3()
-            if os.path.isfile(self.audio_location + '{}.mp3'.format(
-                    self.ogg.title.encode('utf-8'))):
-                self.state.set("Conversion complete")
+            try:
+                self.check_audio_download_folder()
+                self.audio = pafy.new(item_id)
+                self.ogg = self.audio.getbestaudio(preftype="ogg")
+                self.state.set('Downloading audio')
+                self.ogg.download(filepath=self.temp_file,
+                                  callback=self.progress_callback,
+                                  meta=True)
+                self.state.set("Converting to mp3")
+                self.convert_to_mp3()
+                if os.path.isfile(self.audio_location + '{}.mp3'.format(
+                        self.ogg.title.encode('utf-8'))):
+                    self.state.set("Conversion complete")
+            except Exception as e:
+                print(e)
+                self.missing_folder_warning()
+
         t_ogg = threading.Thread(name='ogg_download', target=callback)
         t_ogg.start()
 
@@ -297,7 +312,6 @@ class Application(tk.Frame):
         This function will set the download location to the chosen
         destination and write the location into a settings file.
         """
-        print('Current dl directory: {}'.format(self.download_dir))
         user_dir = askdirectory()
         self.download_dir = user_dir + '/YT2Mp3/'
         os.mkdir(self.download_dir)
@@ -311,49 +325,53 @@ class Application(tk.Frame):
         Checks for separate video folder in download location. Creates
         one if none is present
         """
-        self.video_location = self.download_dir + 'Videos/'
-        if not os.path.exists(self.video_location):
-            os.mkdir(self.video_location)
-       
+        try:
+            if self.download_dir:
+                self.video_location = self.download_dir + 'Videos/'
+            if not os.path.exists(self.video_location):
+                os.mkdir(self.video_location)
+        except:
+            raise Exception
+
     def check_audio_download_folder(self):
         """
         Checks for separate audio folder in download location. Creates
         one if none is present
         """
-        self.audio_location = self.download_dir + 'Audio/'
-        self.temp_file = self.download_dir + 'temp/'
+        if self.download_dir:
+            self.audio_location = self.download_dir + 'Audio/'
+            self.temp_file = self.download_dir + 'temp/'
         try:
             if not os.path.exists(self.audio_location):
                 os.mkdir(self.audio_location)
             if not os.path.exists(self.temp_file):
                 os.mkdir(self.temp_file)
-        except OSError as e:
-            tkMessageBox.showwarning(title='Download folder '
-                                           'missing',
-                                     message='Unable to find the download '
-                                             'folder. \nPlease check that you '
-                                             'still have it saved. \n\nLast '
-                                             'known location: \n{}'.format(
-                self.download_dir))
+        except:
+            raise Exception
 
     def download_video_callback(self):
         try:
             self.download_video(self.choice_id)
-        except AttributeError as e:
-            tkMessageBox.showwarning(title='No video ID', message="Select a "
-                                                                  "video "
-                                                                  "from the "
-                                                                  "list first")
+        except AttributeError:
+            self.missing_id_warning()
+
 
     def download_ogg_callback(self):
         try:
             self.download_ogg(self.choice_id)
         except AttributeError:
-            tkMessageBox.showwarning(title='No video ID', message="Select a "
-                                                                  "title "
+            self.missing_id_warning()
+
+    def missing_folder_warning(self):
+        tkMessageBox.showwarning(title='Missing Download folder',
+                                 message='Please choose a download '
+                                         'folder in File > Settings')
+
+    def missing_id_warning(self):
+        tkMessageBox.showwarning(title='No video ID', message="Select a "
+                                                                  "video "
                                                                   "from the "
                                                                   "list first")
-
 
 root = tk.Tk()
 root.title('YT to mp3')
