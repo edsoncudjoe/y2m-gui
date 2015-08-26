@@ -18,6 +18,8 @@ END = tk.END
 
 new = YtSettings()
 
+#Linux
+AudioSegment.converter = "/home/dev/Apps/ffmpeg-git-20150826-64bit-static/ffmpeg"
 
 class Application(tk.Frame):
     """
@@ -32,7 +34,7 @@ class Application(tk.Frame):
         self.search_type = "video"
 
     def initialize(self):
-        self.search_frame = tk.LabelFrame(self.parent, bg='gray93',
+        self.search_frame = tk.LabelFrame(self.parent, bg='#3b3b3b', fg='#ffffff',
                                           text="search", padx=20, pady=20)
         self.results_frame = tk.LabelFrame(self.parent, bg='gray93',
                                            text="results", padx=20, pady=20)
@@ -290,9 +292,10 @@ class Application(tk.Frame):
                 if os.path.isfile(self.audio_location + '{}.mp3'.format(
                         self.ogg.title.encode('utf-8'))):
                     self.state.set("Conversion complete")
-            except Exception as e:
-                print(e)
-                self.missing_folder_warning()
+            except: # Exception as e:
+                raise
+#                print(e)
+#                self.missing_folder_warning()
 
         t_ogg = threading.Thread(name='ogg_download', target=callback)
         t_ogg.start()
@@ -354,7 +357,6 @@ class Application(tk.Frame):
             self.download_video(self.choice_id)
         except AttributeError:
             self.missing_id_warning()
-
 
     def download_ogg_callback(self):
         try:
