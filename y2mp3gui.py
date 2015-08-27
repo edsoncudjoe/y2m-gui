@@ -4,11 +4,15 @@ import ttk
 import pafy
 import re
 import threading
+import logging
 from pydub import AudioSegment
 from settings import YtSettings
 from tkFileDialog import askdirectory
 import tkMessageBox
 from dl_location import dl_loc
+
+logging.basicConfig(filename='errors.log', level=logging.WARNING)
+logging.getLogger(__name__)
 
 N = tk.N
 S = tk.S
@@ -18,8 +22,10 @@ END = tk.END
 
 new = YtSettings()
 
-#Linux
-AudioSegment.converter = "/home/dev/Apps/ffmpeg-git-20150826-64bit-static/ffmpeg"
+# Linux
+#AudioSegment.converter = "/home/dev/Apps/ffmpeg-git-20150826-64bit-static
+# /ffmpeg"
+
 
 class Application(tk.Frame):
     """
@@ -34,12 +40,14 @@ class Application(tk.Frame):
         self.search_type = "video"
 
     def initialize(self):
-        self.search_frame = tk.LabelFrame(self.parent, bg='#3b3b3b', fg='#ffffff',
-                                          text="search", padx=20, pady=20)
-        self.results_frame = tk.LabelFrame(self.parent, bg='gray93',
-                                           text="results", padx=20, pady=20)
+        self.search_frame = tk.LabelFrame(self.parent, bg='#555555',
+                                          fg='#ffffff',
+                                          text="search", padx=5, pady=10)
+        self.results_frame = tk.LabelFrame(self.parent, bg='#555555',
+                                           fg='#ffffff',
+                                           text="results", padx=5, pady=10)
         self.choice_dl = tk.LabelFrame(self.parent, bg='gray93',
-                                       text="download", padx=20, pady=20)
+                                       text="download", padx=5, pady=5)
         self.choice_btns = tk.Frame(self.choice_dl, bg='gray93', padx=10,
                                     pady=10)
 
@@ -142,7 +150,7 @@ class Application(tk.Frame):
         self.display_choice.grid(row=0, column=0)
         self.download_item.grid(row=0, column=0)
         self.mp3_btn.grid(row=1, column=0)
-        self.dl_status.grid(row=2, column=0, sticky=W+E+S)
+        self.dl_status.grid(row=2, column=0, sticky=W + E + S)
 
     def on_double_click(self, event):
         self.get_user_choice()
@@ -251,6 +259,7 @@ class Application(tk.Frame):
 
     def download_video(self, item_id):
         self.state.set('Preparing download please wait')
+
         def callback():
             try:
                 self.check_download_video_folder()
@@ -278,6 +287,7 @@ class Application(tk.Frame):
         Downloads ogg file to a temp directory to be converted to mp3
         """
         self.state.set('Preparing download please wait')
+
         def callback():
             try:
                 self.check_audio_download_folder()
@@ -292,22 +302,30 @@ class Application(tk.Frame):
                 if os.path.isfile(self.audio_location + '{}.mp3'.format(
                         self.ogg.title.encode('utf-8'))):
                     self.state.set("Conversion complete")
-            except: # Exception as e:
-                raise
-#                print(e)
-#                self.missing_folder_warning()
+            except AttributeError:
+                self.state.set('Download stopped')
+                tkMessageBox.showerror(title='Error', message='Unable to '
+                                                              'download audio')
+            except OSError:
+                self.state.set('Download stopped')
+                self.missing_folder_warning()
+            except Exception, e:
+                logging.error('Error: ', exc_info=True)
 
         t_ogg = threading.Thread(name='ogg_download', target=callback)
         t_ogg.start()
 
     def convert_to_mp3(self):
         """Converts .ogg file in temp directory to mp3"""
-        self.fname = self.ogg.filename.encode('utf-8')
-        self.working_file = self.temp_file + self.fname
-        self.song = AudioSegment.from_file(self.working_file)
-        self.song.export(self.audio_location + '{}.mp3'.format(
-            self.ogg.title.encode('utf-8')), format="mp3")
-        os.remove(self.working_file)
+        try:
+            self.fname = self.ogg.filename.encode('utf-8')
+            self.working_file = self.temp_file + self.fname
+            self.song = AudioSegment.from_file(self.working_file)
+            self.song.export(self.audio_location + '{}.mp3'.format(
+                self.ogg.title.encode('utf-8')), format="mp3")
+            os.remove(self.working_file)
+        except:
+            logging.error('>: ', exc_info=True)
 
     def set_directory(self):
         """
@@ -350,7 +368,7 @@ class Application(tk.Frame):
             if not os.path.exists(self.temp_file):
                 os.mkdir(self.temp_file)
         except:
-            raise Exception
+            raise
 
     def download_video_callback(self):
         try:
@@ -371,14 +389,16 @@ class Application(tk.Frame):
 
     def missing_id_warning(self):
         tkMessageBox.showwarning(title='No video ID', message="Select a "
-                                                                  "video "
-                                                                  "from the "
-                                                                  "list first")
+                                                              "video "
+                                                              "from the "
+                                                              "list first")
+
 
 root = tk.Tk()
 root.title('YT to mp3')
 root.update()
 root.minsize(root.winfo_width(), root.winfo_height())
 app = Application(root)
+app.parent.configure(background='#555555')
 
 root.mainloop()

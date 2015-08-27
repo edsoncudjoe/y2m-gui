@@ -5,3 +5,4 @@ test*
 test_y2mp3-GUI.py
 t.py
 snip.py
+errors.log
