@@ -47,7 +47,7 @@ class Application(tk.Frame):
                                            fg='#ffffff',
                                            text="results", padx=5, pady=10)
         self.choice_dl = tk.LabelFrame(self.parent, bg='gray93',
-                                       text="download", padx=5, pady=5)
+                                       text="download", padx=5, pady=15)
         self.choice_btns = tk.Frame(self.choice_dl, bg='gray93', padx=10,
                                     pady=10)
 
@@ -109,7 +109,8 @@ class Application(tk.Frame):
         # Dl
         self.display_choice = tk.Text(self.choice_dl, x=0, y=50, width=79,
                                       height=2, wrap=tk.WORD)
-
+        self.progbar = ttk.Progressbar(self.choice_dl, orient='horizontal',
+                                       length=200, mode='indeterminate')
         self.download_item = ttk.Button(self.choice_btns, text="Video",
                                         command=lambda:
                                         self.download_video_callback())
@@ -148,6 +149,7 @@ class Application(tk.Frame):
         self.tree.grid(row=0, column=0)
         self.tree_scrollbar.grid(row=0, column=1, sticky=N + S)
         self.display_choice.grid(row=0, column=0)
+        self.progbar.grid(row=1, column=0)
         self.download_item.grid(row=0, column=0)
         self.mp3_btn.grid(row=1, column=0)
         self.dl_status.grid(row=2, column=0, sticky=W + E + S)
@@ -262,7 +264,7 @@ class Application(tk.Frame):
 
     def download_video(self, item_id):
         self.state.set('Preparing download please wait')
-
+        self.progbar.start()
         def callback():
             try:
                 self.check_download_video_folder()
@@ -283,7 +285,9 @@ class Application(tk.Frame):
     def progress_callback(self, total, recvd, ratio, rate, eta):
         self.update_idletasks()
         if recvd == total:
+            self.progbar.stop()
             self.state.set('Download complete')
+
 
     def download_ogg(self, item_id):
         """
