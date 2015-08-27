@@ -219,22 +219,25 @@ class Application(tk.Frame):
         Displays search results from the data api.
         Collects title, ID and duration details of each title
         """
-        count = 1
-        self.playlist_info = []
-        self.clear_tree()
-        for item in search_results['items']:
-            self.get_title_duration(item)
-            self.playlist_info.append((item['snippet']['title'],
-                                       item['id']['videoId'],
-                                       self.duration_call['items'][0][
-                                           'contentDetails'][
-                                           'duration'].encode('utf-8')))
-            m = re.search(r'(\d+\w+)', self.playlist_info[count - 1][2])
-            self.tree.insert("", '1', text=str(" "),
-                             values=(item['snippet']['title'],
-                                     m.group()),
-                             tags="v_")
-            count += 1
+        def populate_callback():
+            count = 1
+            self.playlist_info = []
+            self.clear_tree()
+            for item in search_results['items']:
+                self.get_title_duration(item)
+                self.playlist_info.append((item['snippet']['title'],
+                                           item['id']['videoId'],
+                                           self.duration_call['items'][0][
+                                               'contentDetails'][
+                                               'duration'].encode('utf-8')))
+                m = re.search(r'(\d+\w+)', self.playlist_info[count - 1][2])
+                self.tree.insert("", '1', text=str(" "),
+                                 values=(item['snippet']['title'],
+                                         m.group()),
+                                 tags="v_")
+                count += 1
+        p = threading.Thread(name="Treeview", target=populate_callback)
+        p.start()
 
     def start_search(self, event):
         self.collect_and_populate_results()
