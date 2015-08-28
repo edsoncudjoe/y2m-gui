@@ -40,16 +40,14 @@ class Application(tk.Frame):
         self.search_type = "video"
 
     def initialize(self):
-        self.search_frame = tk.LabelFrame(self.parent, bg='#555555',
-                                          fg='#ffffff',
-                                          text="search", padx=5, pady=10)
-        self.results_frame = tk.LabelFrame(self.parent, bg='#555555',
-                                           fg='#ffffff',
-                                           text="results", padx=5, pady=10)
+        self.search_frame = tk.LabelFrame(self.parent, bg='gray93',
+                                          text="search", padx=9, pady=10)
+        self.results_frame = tk.LabelFrame(self.parent, bg='gray93',
+                                           text="results", padx=17, pady=10)
         self.choice_dl = tk.LabelFrame(self.parent, bg='gray93',
                                        text="download", padx=5, pady=15)
         self.choice_btns = tk.Frame(self.choice_dl, bg='gray93', padx=10,
-                                    pady=10)
+                                    pady=15)
 
         self.search_frame.grid(row=0, column=0)
         self.results_frame.grid(row=1, column=0)
@@ -79,11 +77,18 @@ class Application(tk.Frame):
                                   command=self.create_settings)
 
     def create_widgets(self):
+        self.s = ttk.Style()
+        self.s.theme_use('clam')
+
+        progbar_style = ttk.Style()
+
+
         self.search_entry = ttk.Entry(self.search_frame, width=72,
                                       textvariable=self.usr_search)
         self.search_entry.bind('<Return>', self.start_search)
         self.search_btn = ttk.Button(self.search_frame, text="search",
-                                     command=self.collect_and_populate_results)
+                                     command=self.collect_and_populate_results,
+                                     style='self.s.TButton')
 
         # Tree
         self.tree_columns = ("Name", "Items")
@@ -107,10 +112,11 @@ class Application(tk.Frame):
         self.tree.configure(yscrollcommand=self.tree_scrollbar.set)
 
         # Dl
-        self.display_choice = tk.Text(self.choice_dl, x=0, y=50, width=79,
+        self.display_choice = tk.Text(self.choice_dl, x=0, y=50, width=80,
                                       height=2, wrap=tk.WORD)
-        self.progbar = ttk.Progressbar(self.choice_dl, orient='horizontal',
+        self.progbar = ttk.Progressbar(self.parent, orient='horizontal',
                                        length=200, mode='indeterminate')
+
         self.download_item = ttk.Button(self.choice_btns, text="Video",
                                         command=lambda:
                                         self.download_video_callback())
@@ -139,9 +145,16 @@ class Application(tk.Frame):
         self.location_change = ttk.Button(self.main_settings, text='Change',
                                           command=self.set_directory)
 
+        self.max_results = ttk.Label(self.main_settings, text='Number of '
+                                                              'results (Max '
+                                                              '50): ')
+        self.max_number = tk.Spinbox(self.main_settings, from_=1, to=50)
+
         self.location_label.grid(row=0, column=0)
         self.location_display.grid(row=0, column=1)
         self.location_change.grid(row=0, column=2)
+        self.max_results.grid(row=1, column=0)
+        self.max_number.grid(row=1, column=1)
 
     def grid_widgets(self):
         self.search_entry.grid(row=0, column=0)
@@ -149,7 +162,7 @@ class Application(tk.Frame):
         self.tree.grid(row=0, column=0)
         self.tree_scrollbar.grid(row=0, column=1, sticky=N + S)
         self.display_choice.grid(row=0, column=0)
-        self.progbar.grid(row=1, column=0)
+        self.progbar.grid(row=3, column=0, sticky=W+E+S)
         self.download_item.grid(row=0, column=0)
         self.mp3_btn.grid(row=1, column=0)
         self.dl_status.grid(row=2, column=0, sticky=W + E + S)
@@ -294,6 +307,7 @@ class Application(tk.Frame):
         Downloads ogg file to a temp directory to be converted to mp3
         """
         self.state.set('Preparing download please wait')
+        self.progbar.start()
 
         def callback():
             try:
@@ -308,6 +322,7 @@ class Application(tk.Frame):
                 self.convert_to_mp3()
                 if os.path.isfile(self.audio_location + '{}.mp3'.format(
                         self.ogg.title.encode('utf-8'))):
+                    self.progbar.stop()
                     self.state.set("Conversion complete")
             except AttributeError:
                 self.state.set('Download stopped')
@@ -325,6 +340,7 @@ class Application(tk.Frame):
     def convert_to_mp3(self):
         """Converts .ogg file in temp directory to mp3"""
         try:
+            self.progbar.start()
             self.fname = self.ogg.filename.encode('utf-8')
             self.working_file = self.temp_file + self.fname
             self.song = AudioSegment.from_file(self.working_file)
