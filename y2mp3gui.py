@@ -11,7 +11,11 @@ from tkFileDialog import askdirectory
 import tkMessageBox
 from dl_location import dl_loc
 
-logging.basicConfig(filename='errors.log', level=logging.WARNING)
+logging.basicConfig(level=logging.DEBUG,
+                    filename='ytdl.log',
+                    format='%(asctime)s %(levelname)-8s %(message)s',
+                    datefmt='%a, %d %b %Y %H:%M:%S',
+                    filemode='w')
 logging.getLogger(__name__)
 
 N = tk.N
@@ -22,8 +26,9 @@ END = tk.END
 
 new = YtSettings()
 
-# Linux
-#AudioSegment.converter = "/home/dev/Apps/ffmpeg-git-20150826-64bit-static
+
+# Linux - additional setting needs to be added to locate ffmpeg.
+# AudioSegment.converter = "/home/dev/Apps/ffmpeg-git-20150826-64bit-static
 # /ffmpeg"
 
 
@@ -80,9 +85,6 @@ class Application(tk.Frame):
         self.s = ttk.Style()
         self.s.theme_use('clam')
 
-        progbar_style = ttk.Style()
-
-
         self.search_entry = ttk.Entry(self.search_frame, width=72,
                                       textvariable=self.usr_search)
         self.search_entry.bind('<Return>', self.start_search)
@@ -128,14 +130,16 @@ class Application(tk.Frame):
         self.choice_dl.grid_columnconfigure(0, weight=1)
 
     def create_settings(self):
-        self.location_settings = tk.Toplevel(self.parent, width=120,
-                                             height=50,
-                                             bg='gray93',
-                                             padx=10, pady=10)
-        self.main_settings = tk.Frame(self.location_settings,
+        self.app_settings = tk.Toplevel(self.parent, width=120,
+                                        height=50,
+                                        bg='gray93',
+                                        padx=10, pady=10)
+        self.main_settings = tk.Frame(self.app_settings,
                                       bg='gray93', padx=10,
                                       pady=20)
-        self.main_settings.grid()
+        self.setting_btns = tk.Frame(self.app_settings, bg='gray93')
+        self.main_settings.grid(row=0)
+        self.setting_btns.grid(row=1, sticky=S + E)
 
         self.location_label = ttk.Label(self.main_settings, text='Current '
                                                                  'download '
@@ -146,16 +150,22 @@ class Application(tk.Frame):
                                           command=self.set_directory)
 
         self.max_result_lbl = ttk.Label(self.main_settings, text='Number of '
-                                                              'results (Max '
-                                                              '50): ')
+                                                                 'results (Max '
+                                                                 '50): ')
         self.max_number = tk.Spinbox(self.main_settings, from_=1, to=50,
                                      width=10)
+        self.save_settings = ttk.Button(self.setting_btns, text='Save',
+                                        command=self.set_search_max)
+        self.cancel_settings = ttk.Button(self.setting_btns, text='Cancel',
+                                          command=self.app_settings.destroy)
 
-        self.location_label.grid(row=0, column=0)
-        self.location_display.grid(row=0, column=1)
-        self.location_change.grid(row=0, column=2)
+        self.location_label.grid(row=0, column=0, padx=2)
+        self.location_display.grid(row=0, column=1, padx=2)
+        self.location_change.grid(row=0, column=2, padx=2)
         self.max_result_lbl.grid(row=1, column=0)
         self.max_number.grid(row=1, column=1)
+        self.cancel_settings.grid(row=0, column=0, sticky=E, padx=2)
+        self.save_settings.grid(row=0, column=1, sticky=E, padx=2)
 
     def grid_widgets(self):
         self.search_entry.grid(row=0, column=0)
@@ -163,10 +173,10 @@ class Application(tk.Frame):
         self.tree.grid(row=0, column=0)
         self.tree_scrollbar.grid(row=0, column=1, sticky=N + S)
         self.display_choice.grid(row=0, column=0)
-        self.progbar.grid(row=3, column=0, sticky=W+E+S)
-        self.download_item.grid(row=0, column=0)
-        self.mp3_btn.grid(row=1, column=0)
+        self.download_item.grid(row=0, column=0, pady=2)
+        self.mp3_btn.grid(row=1, column=0, pady=2)
         self.dl_status.grid(row=2, column=0, sticky=W + E + S)
+        self.progbar.grid(row=3, column=0, sticky=W + S)
 
     def on_double_click(self, event):
         self.get_user_choice()
@@ -235,6 +245,7 @@ class Application(tk.Frame):
         Displays search results from the data api.
         Collects title, ID and duration details of each title
         """
+
         def populate_callback():
             count = 1
             self.playlist_info = []
@@ -252,6 +263,7 @@ class Application(tk.Frame):
                                          m.group()),
                                  tags="v_")
                 count += 1
+
         p = threading.Thread(name="Treeview", target=populate_callback)
         p.start()
 
@@ -279,6 +291,7 @@ class Application(tk.Frame):
     def download_video(self, item_id):
         self.state.set('Preparing download please wait')
         self.progbar.start()
+
         def callback():
             try:
                 self.check_download_video_folder()
@@ -302,10 +315,9 @@ class Application(tk.Frame):
             self.progbar.stop()
             self.state.set('Download complete')
 
-
     def download_ogg(self, item_id):
         """
-        Downloads ogg file to a temp directory to be converted to mp3
+        Downloads ogg file to a temporary directory to be converted to mp3
         """
         self.state.set('Preparing download please wait')
         self.progbar.start()
@@ -313,12 +325,15 @@ class Application(tk.Frame):
         def callback():
             try:
                 self.check_audio_download_folder()
+                logging.info('audio folder confirmed')
                 self.audio = pafy.new(item_id)
+                logging.info('pafy object created')
                 self.ogg = self.audio.getbestaudio(preftype="ogg")
+                logging.info('pafy audio chosen')
                 self.state.set('Downloading audio')
                 self.ogg.download(filepath=self.temp_file,
-                                  callback=self.progress_callback,
-                                  meta=True)
+                                  callback=self.progress_callback)
+                # meta=True)
                 self.state.set("Converting to mp3")
                 self.convert_to_mp3()
                 if os.path.isfile(self.audio_location + '{}.mp3'.format(
@@ -417,8 +432,26 @@ class Application(tk.Frame):
                                                               "from the "
                                                               "list first")
 
-    def user_set_search_max(self):
-        self.a = self.max_number.get()
+    def set_search_max(self):
+        """
+        Checks search result choice is between 1 and 50.
+        Sets this amount temporarily to the search query in the YTSettings
+        class.
+        """
+        try:
+            self.a = int(self.max_number.get())
+            if self.a > 0:
+                if self.a < 51:
+                    new.DEFAULT = self.a
+                else:
+                    raise ValueError
+            else:
+                raise ValueError
+            print(self.a)
+        except ValueError:
+            tkMessageBox.showwarning(title='Out of range',
+                                     message='Choose a search range '
+                                             'between 1 and 50')
 
 
 root = tk.Tk()
