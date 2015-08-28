@@ -145,15 +145,16 @@ class Application(tk.Frame):
         self.location_change = ttk.Button(self.main_settings, text='Change',
                                           command=self.set_directory)
 
-        self.max_results = ttk.Label(self.main_settings, text='Number of '
+        self.max_result_lbl = ttk.Label(self.main_settings, text='Number of '
                                                               'results (Max '
                                                               '50): ')
-        self.max_number = tk.Spinbox(self.main_settings, from_=1, to=50)
+        self.max_number = tk.Spinbox(self.main_settings, from_=1, to=50,
+                                     width=10)
 
         self.location_label.grid(row=0, column=0)
         self.location_display.grid(row=0, column=1)
         self.location_change.grid(row=0, column=2)
-        self.max_results.grid(row=1, column=0)
+        self.max_result_lbl.grid(row=1, column=0)
         self.max_number.grid(row=1, column=1)
 
     def grid_widgets(self):
@@ -415,6 +416,9 @@ class Application(tk.Frame):
                                                               "video "
                                                               "from the "
                                                               "list first")
+
+    def user_set_search_max(self):
+        self.a = self.max_number.get()
 
 
 root = tk.Tk()
