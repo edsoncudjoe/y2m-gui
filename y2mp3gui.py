@@ -5,6 +5,8 @@ import pafy
 import re
 import threading
 import logging
+import platform
+import ConfigParser
 from pydub import AudioSegment
 from settings import YtSettings
 from tkFileDialog import askdirectory
@@ -28,8 +30,9 @@ new = YtSettings()
 
 
 # Linux - additional setting needs to be added to locate ffmpeg.
-# AudioSegment.converter = "/home/dev/Apps/ffmpeg-git-20150826-64bit-static
-# /ffmpeg"
+if platform.system() == 'Linux':
+    print('l')
+    AudioSegment.converter = "/home/dev/Apps/ffmpeg-git-20150826-64bit-static/ffmpeg"
 
 
 class Application(tk.Frame):
