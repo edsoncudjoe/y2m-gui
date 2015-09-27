@@ -1,7 +1,7 @@
 
 Replace separate settings.py and dl_location.py file with a config.ini file
 using the ConfigParse module.
-Make a new developer key and hide this within the config file.
+
 Add config file to .gitignore
 
 Import python-video-converter use instead of pydub
@@ -18,4 +18,5 @@ Test if after python-video-converter is used, the application still needs an
 external version of FFMpeg installed to operate
 
 
-Investigate reducing the amount of global variables.
+
+
