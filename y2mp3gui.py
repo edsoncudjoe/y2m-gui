@@ -160,11 +160,13 @@ class SearchItems(tk.Frame):
         self.search_type = "video"
         self.usr_search = tk.StringVar()
 
-        self.search_frame = tk.LabelFrame(self.parent, bg='gray93',
-                                          text="search", padx=9, pady=10)
+        self.search_frame = tk.LabelFrame(self.parent,
+                                          text="search", padx=2, pady=6,
+                                          relief=tk.FLAT, background='#424242',
+                                          foreground='#f5f5f5')
         self.search_frame.grid()
 
-        self.search_entry = ttk.Entry(self.search_frame, width=72,
+        self.search_entry = ttk.Entry(self.search_frame, width=75,
                                       textvariable=self.usr_search)
         self.search_entry.bind('<Return>', self.start_search)
         self.search_btn = ttk.Button(self.search_frame, text="search",
@@ -172,7 +174,7 @@ class SearchItems(tk.Frame):
                                      # style='self.s.TButton')
 
         self.search_entry.grid(row=0, column=0)
-        self.search_btn.grid(row=0, column=1)
+        self.search_btn.grid(row=0, column=1, padx=5)
 
         # self.result_tree = ResultTree(parent)
         # self.tree = self.result_tree.tree
@@ -217,8 +219,12 @@ class ResultTree(tk.Frame):
         self.choice_id = None
         self.user_choice = None
 
-        self.results_frame = tk.LabelFrame(self.parent, bg='gray93',
-                                           text="results", padx=17, pady=10)
+        self.results_frame = tk.LabelFrame(self.parent, bg='#424242',
+                                           fg='#f5f5f5',
+                                           text="results",
+                                           relief=tk.FLAT,
+                                           padx=17, pady=10,
+                                           width=90)
         self.results_frame.grid()
 
         self.tree_columns = ("Name", "Items")
@@ -253,7 +259,23 @@ class ResultTree(tk.Frame):
         self.display_choice.insert(0.0, "You've chosen: {}".format(
             self.user_choice[0].encode('utf-8')))
         self.choice_id = self.find_user_choice_in_playlist_info()
+        dl_option_thread = threading.Thread(name='download_options',
+                                            target=self.get_dl_options,
+                                            args=(self.choice_id, ))
+        dl_option_thread.start()
         print self.choice_id
+
+    def get_dl_options(self, clip_id):
+        """
+        Creates a Pafy instance to collect a list of file formats
+        available for download
+        """
+        app.download_items.state.set("Checking available download options")
+        p = pafy.new(clip_id, size=True)
+        app.download_items.dl_options = []
+        app.download_items.dl_options = [i for i in p.streams]
+        app.download_items.state.set("Download options loaded")
+        print app.download_items.dl_options
 
     def populate_tree_view(self, search_results):
         """
@@ -330,16 +352,21 @@ class DownloadItems(tk.Frame):
         self.choice_id = None
         self.download_dir = None
         self.state = tk.StringVar()
-
+        self.opt_var = tk.StringVar()
+        self.dl_options = []
 # get a list of available downloads
 
-        self.choice_dl = tk.LabelFrame(self.parent, bg='gray93',
+
+        self.choice_dl = tk.LabelFrame(self.parent, bg='green',
                                        text="download", padx=5, pady=15)
-        self.choice_btns = tk.Frame(self.choice_dl, bg='gray93', padx=10,
+        self.choice_btns = tk.Frame(self.choice_dl, bg='red', padx=10,
                                     pady=15)
         self.choice_dl.grid()
         self.choice_btns.grid()
 
+        #self.download_options = tk.OptionMenu(self.choice_dl, self.opt_var,
+        #                                      *self.dl_options,
+        #                                      command=self.func)
         self.download_item = ttk.Button(self.choice_btns, text="Video",
                                         command=lambda:
                                         self.download_video_callback())
@@ -352,10 +379,14 @@ class DownloadItems(tk.Frame):
                                   bg='#424242', fg='#ffffff', pady=3)
         self.choice_dl.grid_columnconfigure(0, weight=1)
 
+        #self.download_options.grid()
         self.download_item.grid(row=0, column=0, pady=2)
-        self.mp3_btn.grid(row=1, column=0, pady=2)
+        self.mp3_btn.grid(row=0, column=1, pady=2)
         self.dl_status.grid(row=2, column=0, sticky=W + E + S)
         self.progbar.grid(row=3, column=0, sticky=W + S)
+
+    def func(self, val):
+        print(val)
 
     def check_download_video_folder(self):
         """
