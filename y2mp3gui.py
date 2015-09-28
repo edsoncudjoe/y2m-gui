@@ -52,6 +52,8 @@ class Setting(tk.Frame):
 
         self.download_dir = dl_loc
         self.download_loc_display = tk.StringVar()
+        self.default_result_amt = tk.StringVar()
+        self.default_result_amt.set('25')
         self.download_loc_display.set(self.download_dir)
 
         self.settings_win = tk.Toplevel(self.parent, width=120,
@@ -78,11 +80,14 @@ class Setting(tk.Frame):
                                                                  'results (Max '
                                                                  '50): ')
         self.max_number = tk.Spinbox(self.main_settings_fr, from_=1, to=50,
+                                     textvariable=self.default_result_amt,
                                      width=10)
-        self.save_settings = ttk.Button(self.settings_win_btns, text='Save',
+        self.save_settings = ttk.Button(self.settings_win_btns, text='Apply',
                                         command=self.set_search_max)
         self.cancel_settings = ttk.Button(self.settings_win_btns, text='Cancel',
                                           command=self.settings_win.destroy)
+        self.close_settings = ttk.Button(self.settings_win_btns, text='OK',
+                                         command=self.settings_win.destroy)
 
         self.location_label.grid(row=0, column=0, padx=2)
         self.location_display.grid(row=0, column=1, padx=2)
@@ -91,6 +96,7 @@ class Setting(tk.Frame):
         self.max_number.grid(row=1, column=1)
         self.cancel_settings.grid(row=0, column=0, sticky=E, padx=2)
         self.save_settings.grid(row=0, column=1, sticky=E, padx=2)
+        self.close_settings.grid(row=0, column=2, sticky=E, padx=2)
 
     def set_directory(self):
         """
@@ -139,8 +145,10 @@ class MenuBar(tk.Frame):
 
         # File
         self.menubar.add_cascade(label="File", menu=self.filemenu)
-        self.filemenu.add_command(label='Settings')
-                                 # command=self.get_settings)
+        self.filemenu.add_command(label='Settings', command=self.call_settings)
+
+    def call_settings(self):
+        self.app_settings = Setting(self)
 
 
 class SearchItems(tk.Frame):
@@ -355,7 +363,7 @@ class DownloadItems(tk.Frame):
         one if none is present
         """
         try:
-            self.download_dir = app.app_settings.download_dir
+            self.download_dir = dl_loc
             if self.download_dir:
                 self.video_location = self.download_dir + 'Videos/'
             if not os.path.exists(self.video_location):
@@ -377,7 +385,7 @@ class DownloadItems(tk.Frame):
             if not os.path.exists(self.temp_file):
                 os.mkdir(self.temp_file)
         except:
-            raise
+            raise Exception
 
     def progress_callback(self, total, recvd, ratio, rate, eta):
         self.update_idletasks()
@@ -494,9 +502,6 @@ class MainApplication(tk.Frame):
         self.search_items.grid()
         self.result_tree.grid()
         self.download_items.grid()
-
-        self.app_settings = Setting(parent)
-
 
 root = tk.Tk()
 root.title('YT to mp3')
