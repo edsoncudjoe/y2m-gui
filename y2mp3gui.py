@@ -10,6 +10,7 @@ import ConfigParser
 from pydub import AudioSegment
 from settings import YtSettings
 from tkFileDialog import askdirectory
+from converter import Converter
 import tkMessageBox
 from dl_location import dl_loc
 
@@ -35,9 +36,17 @@ W = tk.W
 END = tk.END
 
 new = YtSettings()
+fc = Converter()
+fc_options = {
+    'format': 'mp3',
+    'audio': {
+        'codec': 'mp3',
+        'bitrate': '44100',
+        'channels': 2
+    }
+}
 
-
-# Linux - additional setting needs to be added to locate ffmpeg.
+# Linux - local destination for ffmpeg
 if platform.system() == 'Linux':
     print('l')
     AudioSegment.converter = "/home/dev/Apps/ffmpeg-git-20150826-64bit-static/ffmpeg"
@@ -353,8 +362,10 @@ class DownloadItems(tk.Frame):
         self.state = tk.StringVar()
         self.opt_var = tk.StringVar()
         self.dl_options = ['none']
+        self.temp_vid = None
+        self.fname = None
 
-        self.choice_dl = tk.LabelFrame(self.parent, bg='#7a7a7a',
+        self.choice_dl = tk.LabelFrame(self.parent, bg='#676767',
                                        text="download", padx=5, pady=30,
                                        relief=tk.FLAT)
         self.choice_btns = tk.Frame(self.choice_dl, bg='#676767', padx=10,
@@ -424,11 +435,13 @@ class DownloadItems(tk.Frame):
         if self.download_dir:
             self.audio_location = self.download_dir + 'Audio/'
             self.temp_file = self.download_dir + 'temp/'
+            print('pass1')
         try:
             if not os.path.exists(self.audio_location):
                 os.mkdir(self.audio_location)
             if not os.path.exists(self.temp_file):
                 os.mkdir(self.temp_file)
+            print('pass2')
         except:
             raise Exception
 
@@ -455,7 +468,6 @@ class DownloadItems(tk.Frame):
                 self.check_download_video_folder()
                 stream = self.get_option_choice()
                 self.p = pafy.new(item_id, size=True)
-                #self.video = self.p.getbest(preftype="mp4")
                 self.video = app.result_tree.start_pafy.streams[stream]
                 self.state.set("Downloading video...")
                 self.video.download(filepath=self.video_location,
@@ -479,19 +491,19 @@ class DownloadItems(tk.Frame):
         def callback():
             try:
                 self.check_audio_download_folder()
-                logging.info('audio folder confirmed')
-                self.audio = pafy.new(item_id)
+                print('audio folder confirmed')
+                self.vid = pafy.new(item_id)
                 logging.info('pafy object created')
-                self.ogg = self.audio.getbestaudio(preftype="ogg")
+                self.temp_vid = self.vid.getbest(preftype="mp4")
                 logging.info('pafy audio chosen')
                 self.state.set('Downloading audio')
-                self.ogg.download(filepath=self.temp_file,
+                self.vid.download(filepath=self.temp_file,
                                   callback=self.progress_callback)
                 # meta=True)
                 self.state.set("Converting to mp3")
                 self.convert_to_mp3()
                 if os.path.isfile(self.audio_location + '{}.mp3'.format(
-                        self.ogg.title.encode('utf-8'))):
+                        self.temp_vid.title.encode('utf-8'))):
                     self.progbar.stop()
                     self.state.set("Conversion complete")
             except AttributeError:
@@ -510,19 +522,27 @@ class DownloadItems(tk.Frame):
     def convert_to_mp3(self):
         """Converts .ogg file in temp directory to mp3"""
         try:
+        #    conv = fc.convert(self.temp_vid.title.encode('utf-8'), )
             self.progbar.start()
-            self.fname = self.ogg.filename.encode('utf-8')
+            self.fname = self.temp_vid.filename.encode('utf-8')
             self.working_file = self.temp_file + self.fname
-            self.song = AudioSegment.from_file(self.working_file)
-            self.song.export(self.audio_location + '{}.mp3'.format(
-                self.ogg.title.encode('utf-8')), format="mp3")
-            os.remove(self.working_file)
-        except:
+            conv = fc.convert(self.working_file, self.audio_location
+                              + '{}.mp3'.format(
+                self.ogg.title.encode('utf-8')), fc_options)
+            for c in conv:
+                pass
+
+            #self.song = AudioSegment.from_file(self.working_file)
+            #self.song.export(self.audio_location + '{}.mp3'.format(
+            #    self.ogg.title.encode('utf-8')), format="mp3")
+        #    os.remove(self.working_file)
+        except Exception as e:
             logging.error('>: ', exc_info=True)
+            print Exception
 
     def download_ogg_callback(self):
         try:
-            self.download_ogg(self.choice_id)
+            self.download_ogg(app.result_tree.choice_id)
         except AttributeError:
             self.missing_id_warning()
 
