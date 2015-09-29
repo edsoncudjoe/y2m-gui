@@ -162,7 +162,7 @@ class SearchItems(tk.Frame):
 
         self.search_frame = tk.LabelFrame(self.parent,
                                           text="search", padx=2, pady=6,
-                                          relief=tk.FLAT, background='#424242',
+                                          relief=tk.FLAT, background='#676767',
                                           foreground='#f5f5f5')
         self.search_frame.grid()
 
@@ -171,26 +171,22 @@ class SearchItems(tk.Frame):
         self.search_entry.bind('<Return>', self.start_search)
         self.search_btn = ttk.Button(self.search_frame, text="search",
                                      command=self.collect_and_populate_results)
-                                     # style='self.s.TButton')
 
         self.search_entry.grid(row=0, column=0)
         self.search_btn.grid(row=0, column=1, padx=5)
-
-        # self.result_tree = ResultTree(parent)
-        # self.tree = self.result_tree.tree
 
     def start_search(self, event):
         self.collect_and_populate_results()
 
     def collect_and_populate_results(self):
-        self.r = self.collect_search_result()
-        app.result_tree.populate_tree_view(self.r)
+        r = self.collect_search_result()
+        app.result_tree.populate_tree_view(r)
 
     def collect_search_result(self):
         """"Collects user entrys as variables"""
         self.search_entry = self.usr_search.get().replace(" ", "+")
-        self.res_list = self.get_result_list()
-        return self.res_list
+        res_list = self.get_result_list()
+        return res_list
 
     def get_result_list(self):
         """
@@ -198,12 +194,12 @@ class SearchItems(tk.Frame):
         Returns search results as list
         """
         try:
-            self.result_command = new.yt.search().list(part="snippet",
+            result_command = new.yt.search().list(part="snippet",
                                                        q=self.search_entry,
                                                        type=self.search_type,
                                                        maxResults=new.DEFAULT)
-            self.result = self.result_command.execute()
-            return self.result
+            result = result_command.execute()
+            return result
         except AttributeError:
             tkMessageBox.showerror("Server Error", "I am unable to contact YouTube's Servers"
                                                    "\nPlease check your internet connection")
@@ -220,7 +216,7 @@ class ResultTree(tk.Frame):
         self.user_choice = None
         self.start_pafy = None
 
-        self.results_frame = tk.LabelFrame(self.parent, bg='#424242',
+        self.results_frame = tk.LabelFrame(self.parent, bg='#676767',
                                            fg='#f5f5f5',
                                            text="results",
                                            relief=tk.FLAT,
@@ -264,7 +260,7 @@ class ResultTree(tk.Frame):
                                             target=self.get_dl_options,
                                             args=(self.choice_id, ))
         dl_option_thread.start()
-        print self.choice_id
+        # print self.choice_id
 
     def get_dl_options(self, clip_id):
         """
@@ -357,22 +353,19 @@ class DownloadItems(tk.Frame):
         self.state = tk.StringVar()
         self.opt_var = tk.StringVar()
         self.dl_options = ['none']
-# get a list of available downloads
-
 
         self.choice_dl = tk.LabelFrame(self.parent, bg='#7a7a7a',
-                                       text="download", padx=5, pady=15)
+                                       text="download", padx=5, pady=30,
+                                       relief=tk.FLAT)
         self.choice_btns = tk.Frame(self.choice_dl, bg='#676767', padx=10,
-                                    pady=15)
-        self.choice_dl.grid()
-        self.choice_btns.grid()
+                                    pady=30)
+        self.choice_dl.grid(sticky=E+W)
+        self.choice_btns.grid(row=0, column=1, rowspan=3)
 
         self.dl_options_lbl = tk.Label(self.choice_dl, text='Select download '
                                                             'option')
         self.download_options = tk.OptionMenu(self.choice_dl, self.opt_var,
                                               *self.dl_options)
-        self.dummy = ttk.Button(self.choice_dl, text='dummy',
-                                command=self.print_option_choice)
         self.download_item = ttk.Button(self.choice_btns, text="Video",
                                         command=lambda:
                                         self.download_video_callback())
@@ -385,9 +378,8 @@ class DownloadItems(tk.Frame):
                                   bg='#424242', fg='#ffffff', pady=3)
         self.choice_dl.grid_columnconfigure(0, weight=1)
 
-        self.dl_options_lbl.grid()
-        self.download_options.grid()
-        self.dummy.grid()
+        self.dl_options_lbl.grid(row=0, column=0)
+        self.download_options.grid(row=1, column=0, sticky=E+W)
         self.download_item.grid(row=0, column=0, pady=2)
         self.mp3_btn.grid(row=0, column=1, pady=2)
         self.dl_status.grid(row=2, column=0, sticky=W + E + S)
@@ -403,11 +395,12 @@ class DownloadItems(tk.Frame):
                                                           self.opt_var,
                                                           choice[0]))
 
-    def print_option_choice(self):
+    def get_option_choice(self):
+        """Gets chosen download format"""
         dl_opt_choice = self.opt_var.get()
         for item in enumerate(self.dl_options):
             if dl_opt_choice == item[1][1]:
-                print(item[0])
+                return item[0]
 
     def check_download_video_folder(self):
         """
@@ -460,8 +453,10 @@ class DownloadItems(tk.Frame):
         def callback():
             try:
                 self.check_download_video_folder()
+                stream = self.get_option_choice()
                 self.p = pafy.new(item_id, size=True)
-                self.video = self.p.getbest(preftype="mp4")
+                #self.video = self.p.getbest(preftype="mp4")
+                self.video = app.result_tree.start_pafy.streams[stream]
                 self.state.set("Downloading video...")
                 self.video.download(filepath=self.video_location,
                                     quiet=True,
@@ -547,6 +542,7 @@ class MainApplication(tk.Frame):
     def __init__(self, parent):
         tk.Frame.__init__(self, parent)
         self.parent = parent
+        self.parent.config(background='#676767')
         self.menubar = MenuBar(parent)
         self.search_items = SearchItems(parent)
         self.result_tree = ResultTree(parent)

@@ -5,8 +5,6 @@ using the ConfigParse module.
 Add config file to .gitignore
 
 Import python-video-converter use instead of pydub
-Add an option to choose video download quality. High, medium and low quality
-mp4 files, mp3 audio files.
 
 Add a description or file size information of clip (if necessary)
 
