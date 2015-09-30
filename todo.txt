@@ -4,7 +4,6 @@ using the ConfigParse module.
 
 Add config file to .gitignore
 
-Import python-video-converter use instead of pydub
 
 Add a description or file size information of clip (if necessary)
 

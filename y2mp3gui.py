@@ -166,6 +166,7 @@ class SearchItems(tk.Frame):
         tk.Frame.__init__(self, parent)
         self.parent = parent
 
+        self.search_entry = None
         self.search_type = "video"
         self.usr_search = tk.StringVar()
 
@@ -175,13 +176,13 @@ class SearchItems(tk.Frame):
                                           foreground='#f5f5f5')
         self.search_frame.grid()
 
-        self.search_entry = ttk.Entry(self.search_frame, width=75,
+        self.search_box = ttk.Entry(self.search_frame, width=75,
                                       textvariable=self.usr_search)
-        self.search_entry.bind('<Return>', self.start_search)
+        self.search_box.bind('<Return>', self.start_search)
         self.search_btn = ttk.Button(self.search_frame, text="search",
                                      command=self.collect_and_populate_results)
 
-        self.search_entry.grid(row=0, column=0)
+        self.search_box.grid(row=0, column=0)
         self.search_btn.grid(row=0, column=1, padx=5)
 
     def start_search(self, event):
@@ -276,14 +277,24 @@ class ResultTree(tk.Frame):
         Creates a Pafy instance to collect a list of file formats
         available for download
         """
-        app.download_items.state.set("Checking available download options")
-        self.start_pafy = pafy.new(clip_id, size=True)
-        app.download_items.dl_options = []
-        app.download_items.dl_options = [(i, str(i)) for i in
-                                         self.start_pafy.streams]
-        app.download_items.refresh_dl_options()
-        app.download_items.state.set("Download options loaded")
-        # print app.download_items.dl_options
+        def dl_opt_list():
+            try:
+                app.download_items.state.set("Checking available download "
+                                             "options")
+                self.start_pafy = pafy.new(clip_id, size=True)
+                app.download_items.dl_options = []
+                app.download_items.dl_options = [(i, str(i)) for i in
+                                                 self.start_pafy.streams]
+                app.download_items.refresh_dl_options()
+                app.download_items.state.set("Download options loaded")
+                # print app.download_items.dl_options
+            except AttributeError as e:
+                app.download_items.state.set("Internal error getting options")
+                logging.error(e)
+
+        get_dl_options = threading.Thread(name='get_options',
+                                          target=dl_opt_list)
+        get_dl_options.start()
 
     def populate_tree_view(self, search_results):
         """
@@ -358,12 +369,13 @@ class DownloadItems(tk.Frame):
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.choice_id = None
-        self.download_dir = None
+        self.download_dir = dl_loc
         self.state = tk.StringVar()
         self.opt_var = tk.StringVar()
         self.dl_options = ['none']
         self.temp_vid = None
         self.fname = None
+        self.temp_vid = None
 
         self.choice_dl = tk.LabelFrame(self.parent, bg='#676767',
                                        text="download", padx=5, pady=30,
@@ -381,7 +393,7 @@ class DownloadItems(tk.Frame):
                                         command=lambda:
                                         self.download_video_callback())
         self.mp3_btn = ttk.Button(self.choice_btns, text="Mp3",
-                                  command=lambda: self.download_ogg_callback())
+                                  command=lambda: self.get_mp3())
         self.progbar = ttk.Progressbar(self.parent, orient='horizontal',
                                        length=200, mode='indeterminate')
         self.dl_status = tk.Label(self.parent, textvariable=self.state,
@@ -399,7 +411,7 @@ class DownloadItems(tk.Frame):
     def refresh_dl_options(self):
         """Reset option variable and insert new download options"""
         self.opt_var.set('')
-        # self.download_options['menu'].delete(0, 'end')
+        self.download_options['menu'].delete(0, 'end')
         for choice in self.dl_options:
             self.download_options['menu'].add_command(label=choice,
                                                       command=tk._setit(
@@ -435,15 +447,50 @@ class DownloadItems(tk.Frame):
         if self.download_dir:
             self.audio_location = self.download_dir + 'Audio/'
             self.temp_file = self.download_dir + 'temp/'
-            print('pass1')
         try:
             if not os.path.exists(self.audio_location):
                 os.mkdir(self.audio_location)
             if not os.path.exists(self.temp_file):
                 os.mkdir(self.temp_file)
-            print('pass2')
         except:
             raise Exception
+
+    def get_mp3(self):
+        """Handles downloads and conversions to mp3 files"""
+
+        self.state.set('Preparing download please wait')
+        self.progbar.start()
+
+        def callback():
+            try:
+                self.check_audio_download_folder()
+                # Download mp4
+                self.state.set('Downloading')
+                self.temp_vid = app.result_tree.start_pafy.getbest(
+                    preftype="mp4")
+                self.temp_vid.download(filepath=self.temp_file,
+                                  quiet=True,
+                                  callback=self.progress_callback,
+                                  meta=True)
+                filename = self.temp_vid.filename.encode('utf-8')
+                working_file = self.temp_file + filename
+                encoded = self.audio_location + filename + '.mp3'
+                conv = fc.convert(working_file, encoded, fc_options,
+                                  timeout=None)
+                self.state.set('Converting to mp3...')
+                for time in conv:
+                    pass
+
+                # Delete temp file
+                os.remove(working_file)
+                self.state.set('Conversion complete')
+                self.progbar.stop()
+            except Exception as e:
+                self.progbar.stop()
+                logging.error('>: ', exc_info=True)
+                print(e)
+        temp_vid_dl = threading.Thread(name='temp_vid_dl', target=callback)
+        temp_vid_dl.start()
 
     def progress_callback(self, total, recvd, ratio, rate, eta):
         self.update_idletasks()
@@ -471,80 +518,23 @@ class DownloadItems(tk.Frame):
                 self.video = app.result_tree.start_pafy.streams[stream]
                 self.state.set("Downloading video...")
                 self.video.download(filepath=self.video_location,
-                                    quiet=True,
+                                    quiet=False,
                                     callback=self.progress_callback,
                                     meta=True)
+            except (TypeError, AttributeError) as e:
+                tkMessageBox.showwarning('No file type', 'Select a file type '
+                                                      'from the '
+                                         'download options first')
+                self.progbar.stop()
             except Exception as e:
-                print(e)
                 self.missing_folder_warning()
+                print('Error: ', e)
+                logging.error('Error: {}'.format(e), exc_info=True)
+                self.progbar.stop()
+
 
         t = threading.Thread(name='vid_download', target=callback)
         t.start()
-
-    def download_ogg(self, item_id):
-        """
-        Downloads ogg file to a temporary directory to be converted to mp3
-        """
-        self.state.set('Preparing download please wait')
-        self.progbar.start()
-
-        def callback():
-            try:
-                self.check_audio_download_folder()
-                print('audio folder confirmed')
-                self.vid = pafy.new(item_id)
-                logging.info('pafy object created')
-                self.temp_vid = self.vid.getbest(preftype="mp4")
-                logging.info('pafy audio chosen')
-                self.state.set('Downloading audio')
-                self.vid.download(filepath=self.temp_file,
-                                  callback=self.progress_callback)
-                # meta=True)
-                self.state.set("Converting to mp3")
-                self.convert_to_mp3()
-                if os.path.isfile(self.audio_location + '{}.mp3'.format(
-                        self.temp_vid.title.encode('utf-8'))):
-                    self.progbar.stop()
-                    self.state.set("Conversion complete")
-            except AttributeError:
-                self.state.set('Download stopped')
-                tkMessageBox.showerror(title='Error', message='Unable to '
-                                                              'download audio')
-            except OSError:
-                self.state.set('Download stopped')
-                self.missing_folder_warning()
-            except Exception, e:
-                logging.error('Error: ', exc_info=True)
-
-        t_ogg = threading.Thread(name='ogg_download', target=callback)
-        t_ogg.start()
-
-    def convert_to_mp3(self):
-        """Converts .ogg file in temp directory to mp3"""
-        try:
-        #    conv = fc.convert(self.temp_vid.title.encode('utf-8'), )
-            self.progbar.start()
-            self.fname = self.temp_vid.filename.encode('utf-8')
-            self.working_file = self.temp_file + self.fname
-            conv = fc.convert(self.working_file, self.audio_location
-                              + '{}.mp3'.format(
-                self.ogg.title.encode('utf-8')), fc_options)
-            for c in conv:
-                pass
-
-            #self.song = AudioSegment.from_file(self.working_file)
-            #self.song.export(self.audio_location + '{}.mp3'.format(
-            #    self.ogg.title.encode('utf-8')), format="mp3")
-        #    os.remove(self.working_file)
-        except Exception as e:
-            logging.error('>: ', exc_info=True)
-            print Exception
-
-    def download_ogg_callback(self):
-        try:
-            self.download_ogg(app.result_tree.choice_id)
-        except AttributeError:
-            self.missing_id_warning()
 
     def missing_folder_warning(self):
         tkMessageBox.showwarning(title='Missing Download folder',
