@@ -226,11 +226,11 @@ class ResultTree(tk.Frame):
         self.user_choice = None
         self.start_pafy = None
 
-        self.results_frame = tk.LabelFrame(self.parent, bg='#676767',
+        self.results_frame = tk.LabelFrame(self.parent, bg='green',
                                            fg='#f5f5f5',
                                            text="results",
                                            relief=tk.FLAT,
-                                           padx=7, pady=10)
+                                           padx=7, pady=2)
         self.results_frame.grid()
 
         self.tree_columns = ("Name", "Items")
@@ -252,13 +252,13 @@ class ResultTree(tk.Frame):
         self.tree_scrollbar = ttk.Scrollbar(self.results_frame,
                                             command=self.tree.yview)
         self.tree.configure(yscrollcommand=self.tree_scrollbar.set)
-        self.display_choice = tk.Text(self.results_frame, x=0, y=50, width=95,
+        self.display_choice = tk.Text(self.results_frame, width=95,
                                       height=2, wrap=tk.WORD, bd=0,
-                                      bg='#7a7a7a')
+                                      bg='#ffffff', fg='#006600')
 
         self.tree.grid(row=0, column=0)
         self.tree_scrollbar.grid(row=0, column=1, sticky=N + S)
-        self.display_choice.grid(row=1, column=0)
+        self.display_choice.grid(row=2, column=0)
 
     def on_double_click(self, event):
         self.get_user_choice()
@@ -377,18 +377,18 @@ class DownloadItems(tk.Frame):
         self.fname = None
         self.temp_vid = None
 
-        self.choice_dl = tk.LabelFrame(self.parent, bg='#676767',
-                                       text="download", padx=5, pady=30,
-                                       relief=tk.FLAT)
-        self.choice_btns = tk.Frame(self.choice_dl, bg='#676767', padx=10,
-                                    pady=30)
+        self.choice_dl = tk.Frame(self.parent, bg='yellow', padx=5, pady=2)
+        self.choice_btns = tk.Frame(self.choice_dl, bg='#606060', padx=40,
+                                    pady=10)
         self.choice_dl.grid(sticky=E+W)
         self.choice_btns.grid(row=0, column=1, rowspan=3)
 
-        self.dl_options_lbl = tk.Label(self.choice_dl, text='Select download '
-                                                            'option')
+        self.dl_options_lbl = tk.Label(self.choice_dl, text='Select file type',
+                                       bg='#676767', fg='#f5f5f5')
         self.download_options = tk.OptionMenu(self.choice_dl, self.opt_var,
                                               *self.dl_options)
+        download_label = tk.Label(self.choice_btns, text='Download',
+                                  bg='#676767', fg='#f5f5f5', pady=2)
         self.download_item = ttk.Button(self.choice_btns, text="Video",
                                         command=lambda:
                                         self.download_video_callback())
@@ -403,10 +403,11 @@ class DownloadItems(tk.Frame):
 
         self.dl_options_lbl.grid(row=0, column=0)
         self.download_options.grid(row=1, column=0, sticky=E+W)
-        self.download_item.grid(row=0, column=0, pady=2)
-        self.mp3_btn.grid(row=0, column=1, pady=2)
-        self.dl_status.grid(row=2, column=0, sticky=W + E + S)
-        self.progbar.grid(row=3, column=0, sticky=W + S)
+        download_label.grid(row=0, column=0, columnspan=2)
+        self.download_item.grid(row=1, column=0, pady=2)
+        self.mp3_btn.grid(row=1, column=1, pady=2)
+        self.dl_status.grid(sticky=W + E + S)
+        #self.progbar.grid(row=2, column=0, pady=2, sticky=W + S)
 
     def refresh_dl_options(self):
         """Reset option variable and insert new download options"""
@@ -527,7 +528,8 @@ class DownloadItems(tk.Frame):
                                          'download options first')
                 self.progbar.stop()
             except Exception as e:
-                self.missing_folder_warning()
+                tkMessageBox.showerror('Error', 'There was an internal error, please try again.')
+                # self.missing_folder_warning()
                 print('Error: ', e)
                 logging.error('Error: {}'.format(e), exc_info=True)
                 self.progbar.stop()
