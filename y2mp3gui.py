@@ -7,20 +7,11 @@ import threading
 import logging
 import platform
 import ConfigParser
-from pydub import AudioSegment
 from settings import YtSettings
 from tkFileDialog import askdirectory
 from converter import Converter
 import tkMessageBox
-from dl_location import dl_loc
-
-Settings = ConfigParser.ConfigParser()
-parse = ConfigParser.SafeConfigParser()
-config_file = './config.ini'
-try:
-    parse.read(open(config_file))
-except IOError:
-    pass
+#from dl_location import dl_loc
 
 logging.basicConfig(level=logging.DEBUG,
                     filename='ytdl.log',
@@ -28,6 +19,16 @@ logging.basicConfig(level=logging.DEBUG,
                     datefmt='%a, %d %b %Y %H:%M:%S',
                     filemode='w')
 logging.getLogger(__name__)
+
+Settings = ConfigParser.ConfigParser()
+parse = ConfigParser.SafeConfigParser()
+config_file = './config.ini'
+try:
+    parse.readfp(open(config_file))
+except IOError:
+    logging.error('Unable to locate config file', exc_info=True)
+
+dl_loc = parse.get('download', 'directory')
 
 N = tk.N
 S = tk.S
@@ -49,7 +50,8 @@ fc_options = {
 # Linux - local destination for ffmpeg
 if platform.system() == 'Linux':
     print('l')
-    AudioSegment.converter = "/home/dev/Apps/ffmpeg-git-20150826-64bit-static/ffmpeg"
+    AudioSegment.converter = \
+        "/home/dev/Apps/ffmpeg-git-20150826-64bit-static/ffmpeg"
 
 
 class Setting(tk.Frame):
@@ -117,9 +119,21 @@ class Setting(tk.Frame):
         self.download_dir = user_dir + '/YT2Mp3/'
         os.mkdir(self.download_dir)
         self.download_loc_display.set(self.download_dir)
-        with open('dl_location.py', 'w') as set_download:
-            set_download.write('dl_loc = \'{}\''.format(
-                self.download_dir))
+        #with open('dl_location.py', 'w') as set_download:
+        #    set_download.write('dl_loc = \'{}\''.format(
+        #        self.download_dir))
+
+        # ConfigParser
+        dldir_conf = open('./config.ini', 'w')
+        Settings.add_section('download')
+        Settings.set('download', 'directory', self.download_dir)
+        Settings.write(dldir_conf)
+        dldir_conf.close()
+
+        tkMessageBox.showinfo('Download directory saved', 'Please restart the '
+                                                 'application for the '
+                                                 'directory settings to take '
+                                                          'effect.')
 
     def set_search_max(self):
         """
@@ -150,14 +164,32 @@ class MenuBar(tk.Frame):
 
         self.menubar = tk.Menu(self.parent)
         self.filemenu = tk.Menu(self.menubar, tearoff=0, )
+        self.helpmenu = tk.Menu(self.menubar, tearoff=0)
         root.config(menu=self.menubar)
 
         # File
         self.menubar.add_cascade(label="File", menu=self.filemenu)
         self.filemenu.add_command(label='Settings', command=self.call_settings)
+        self.filemenu.add_separator()
+        self.filemenu.add_command(label='Quit', command=self.exit_app)
+
+        # Help
+        self.menubar.add_cascade(label="Help", menu=self.helpmenu)
+        self.helpmenu.add_command(label="About", command=self.about)
+
+    def about(self):
+        tkMessageBox.showinfo("YTdl2mp3 1.0.0",
+                          "\nYoutube Downloader\n"
+                          "\nCreated by E.Cudjoe"
+                          "\nVersion 1.0.0"
+                          "\nhttps://github.com/edsoncudjoe")
 
     def call_settings(self):
         self.app_settings = Setting(self)
+
+    def exit_app(self):
+        if tkMessageBox.askokcancel("Quit", "Do you really wish to quit?"):
+            root.quit()
 
 
 class SearchItems(tk.Frame):
@@ -165,6 +197,10 @@ class SearchItems(tk.Frame):
     def __init__(self, parent):
         tk.Frame.__init__(self, parent)
         self.parent = parent
+        self.columnconfigure(0, weight=1)
+        self.parent.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+        self.parent.rowconfigure(0, weight=1)
 
         self.search_entry = None
         self.search_type = "video"
@@ -174,7 +210,9 @@ class SearchItems(tk.Frame):
                                           text="search", padx=2, pady=6,
                                           relief=tk.FLAT, background='#676767',
                                           foreground='#f5f5f5')
-        self.search_frame.grid()
+        self.search_frame.grid(sticky=N+E+W)
+        self.search_frame.columnconfigure(0, weight=1)
+        self.search_frame.rowconfigure(0, weight=1)
 
         self.search_box = ttk.Entry(self.search_frame, width=75,
                                       textvariable=self.usr_search)
@@ -182,7 +220,7 @@ class SearchItems(tk.Frame):
         self.search_btn = ttk.Button(self.search_frame, text="search",
                                      command=self.collect_and_populate_results)
 
-        self.search_box.grid(row=0, column=0)
+        self.search_box.grid(row=0, column=0, sticky=N+E+W)
         self.search_btn.grid(row=0, column=1, padx=5)
 
     def start_search(self, event):
@@ -221,6 +259,11 @@ class ResultTree(tk.Frame):
     def __init__(self, parent):
         tk.Frame.__init__(self, parent)
         self.parent = parent
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+        self.parent.columnconfigure(0, weight=1)
+        self.parent.rowconfigure(0, weight=1)
+
         self.playlist_info = []
         self.choice_id = None
         self.user_choice = None
@@ -231,7 +274,9 @@ class ResultTree(tk.Frame):
                                            text="results",
                                            relief=tk.FLAT,
                                            padx=7, pady=2)
-        self.results_frame.grid()
+        self.results_frame.grid(sticky=N+S+E+W)
+        self.results_frame.columnconfigure(0, weight=1)
+        self.results_frame.rowconfigure(0, weight=1)
 
         self.tree_columns = ("Name", "Items")
         self.tree = ttk.Treeview(self.results_frame, columns=self.tree_columns,
@@ -252,19 +297,28 @@ class ResultTree(tk.Frame):
         self.tree_scrollbar = ttk.Scrollbar(self.results_frame,
                                             command=self.tree.yview)
         self.tree.configure(yscrollcommand=self.tree_scrollbar.set)
+        spacer = tk.LabelFrame(self.results_frame, text='\n', bg='#676767',
+                               relief=tk.FLAT, pady=1)
         self.display_choice = tk.Text(self.results_frame, width=95,
-                                      height=2, wrap=tk.WORD, bd=0,
-                                      bg='#ffffff', fg='#006600')
+                                      height=5, wrap=tk.WORD, bd=1,
+                                      bg='#ffffff', fg='#006600',
+                                      relief=tk.SUNKEN)
 
-        self.tree.grid(row=0, column=0)
+        self.tree.grid(row=0, column=0, sticky=N+S+E+W)
+        self.tree.columnconfigure(0, weight=1)
+        self.tree.rowconfigure(0, weight=1)
         self.tree_scrollbar.grid(row=0, column=1, sticky=N + S)
-        self.display_choice.grid(row=2, column=0)
+        spacer.grid(row=1, column=0)
+        self.display_choice.grid(row=2, column=0, sticky=E+W)
 
     def on_double_click(self, event):
         self.get_user_choice()
         self.display_choice.delete(0.0, END)
-        self.display_choice.insert(0.0, "You've chosen: {}".format(
-            self.user_choice[0].encode('utf-8')))
+        self.display_choice.insert(0.0, "Title: {} "
+                                        "\n\nDescription: {}".format(
+            self.user_choice[0].encode('utf-8'),
+            self.user_choice[2].encode('utf-8')))
+
         self.choice_id = self.find_user_choice_in_playlist_info()
         dl_option_thread = threading.Thread(name='download_options',
                                             target=self.get_dl_options,
@@ -312,11 +366,13 @@ class ResultTree(tk.Frame):
                                            item['id']['videoId'],
                                            self.duration_call['items'][0][
                                                'contentDetails'][
-                                               'duration'].encode('utf-8')))
+                                               'duration'].encode('utf-8'),
+                                           item['snippet']['description']))
                 m = re.search(r'(\d+\w+)', self.playlist_info[count - 1][2])
                 self.tree.insert("", '1', text=str(" "),
                                  values=(item['snippet']['title'],
-                                         m.group()),
+                                         m.group(), item['snippet'][
+                                             'description']),
                                  tags="v_")
                 count += 1
 
@@ -368,6 +424,11 @@ class DownloadItems(tk.Frame):
     def __init__(self, parent):
         tk.Frame.__init__(self, parent)
         self.parent = parent
+        self.rowconfigure(0, weight=1)
+        self.columnconfigure(0, weight=1)
+        self.parent.rowconfigure(0, weight=1)
+        self.parent.columnconfigure(0, weight=1)
+
         self.choice_id = None
         self.download_dir = dl_loc
         self.state = tk.StringVar()
@@ -377,16 +438,19 @@ class DownloadItems(tk.Frame):
         self.fname = None
         self.temp_vid = None
 
-        self.choice_dl = tk.Frame(self.parent, bg='yellow', padx=5, pady=2)
-        self.choice_btns = tk.Frame(self.choice_dl, bg='#606060', padx=40,
+        self.choice_dl = tk.Frame(self.parent, bg='#676767', padx=5, pady=2)
+        self.choice_btns = tk.Frame(self.choice_dl, bg='#676767', padx=40,
                                     pady=10)
-        self.choice_dl.grid(sticky=E+W)
+        self.choice_dl.grid(sticky=N+S+E+W)
+        self.choice_dl.rowconfigure(0, weight=1)
+        self.choice_dl.columnconfigure(0, weight=1)
         self.choice_btns.grid(row=0, column=1, rowspan=3)
 
         self.dl_options_lbl = tk.Label(self.choice_dl, text='Select file type',
                                        bg='#676767', fg='#f5f5f5')
         self.download_options = tk.OptionMenu(self.choice_dl, self.opt_var,
                                               *self.dl_options)
+        self.download_options.config(background='#676767')
         download_label = tk.Label(self.choice_btns, text='Download',
                                   bg='#676767', fg='#f5f5f5', pady=2)
         self.download_item = ttk.Button(self.choice_btns, text="Video",
@@ -394,8 +458,6 @@ class DownloadItems(tk.Frame):
                                         self.download_video_callback())
         self.mp3_btn = ttk.Button(self.choice_btns, text="Mp3",
                                   command=lambda: self.get_mp3())
-        self.progbar = ttk.Progressbar(self.parent, orient='horizontal',
-                                       length=200, mode='indeterminate')
         self.dl_status = tk.Label(self.parent, textvariable=self.state,
                                   bd=1, relief=tk.SUNKEN, anchor=W,
                                   bg='#424242', fg='#ffffff', pady=3)
@@ -407,7 +469,6 @@ class DownloadItems(tk.Frame):
         self.download_item.grid(row=1, column=0, pady=2)
         self.mp3_btn.grid(row=1, column=1, pady=2)
         self.dl_status.grid(sticky=W + E + S)
-        #self.progbar.grid(row=2, column=0, pady=2, sticky=W + S)
 
     def refresh_dl_options(self):
         """Reset option variable and insert new download options"""
@@ -417,7 +478,7 @@ class DownloadItems(tk.Frame):
             self.download_options['menu'].add_command(label=choice,
                                                       command=tk._setit(
                                                           self.opt_var,
-                                                          choice[0]))
+                                                          choice[1]))
 
     def get_option_choice(self):
         """Gets chosen download format"""
@@ -432,35 +493,38 @@ class DownloadItems(tk.Frame):
         one if none is present
         """
         try:
-            self.download_dir = dl_loc
+            self.download_dir = parse.get('download', 'directory')
             if self.download_dir:
                 self.video_location = self.download_dir + 'Videos/'
             if not os.path.exists(self.video_location):
                 os.mkdir(self.video_location)
-        except:
-            raise Exception
+        except Exception as c:
+            logging.error(c, exc_info=True)
+            raise c
 
     def check_audio_download_folder(self):
         """
         Checks for separate audio folder in download location. Creates
         one if none is present
         """
-        if self.download_dir:
-            self.audio_location = self.download_dir + 'Audio/'
-            self.temp_file = self.download_dir + 'temp/'
         try:
+            self.download_dir = parse.get('download', 'directory')
+            if self.download_dir:
+                self.audio_location = self.download_dir + 'Audio/'
+                self.temp_file = self.download_dir + 'temp/'
+
             if not os.path.exists(self.audio_location):
                 os.mkdir(self.audio_location)
             if not os.path.exists(self.temp_file):
                 os.mkdir(self.temp_file)
-        except:
-            raise Exception
+        except Exception as m:
+            logging.error(m, exc_info=True)
+            raise m
 
     def get_mp3(self):
         """Handles downloads and conversions to mp3 files"""
 
         self.state.set('Preparing download please wait')
-        self.progbar.start()
 
         def callback():
             try:
@@ -470,7 +534,7 @@ class DownloadItems(tk.Frame):
                 self.temp_vid = app.result_tree.start_pafy.getbest(
                     preftype="mp4")
                 self.temp_vid.download(filepath=self.temp_file,
-                                  quiet=True,
+                                  quiet=False,
                                   callback=self.progress_callback,
                                   meta=True)
                 filename = self.temp_vid.filename.encode('utf-8')
@@ -485,18 +549,30 @@ class DownloadItems(tk.Frame):
                 # Delete temp file
                 os.remove(working_file)
                 self.state.set('Conversion complete')
-                self.progbar.stop()
+            except (TypeError, AttributeError):
+                tkMessageBox.showwarning('No file type', 'Select an item '
+                                                      'from the results first')
+                self.state.set('Download stopped')
+            except OSError:
+                self.missing_folder_warning()
+                self.state.set('Download stopped')
+            except UnicodeDecodeError:
+                tkMessageBox.showerror('Error', 'Unable to process this '
+                                                'video, '
+                                                'please try another.')
+                logging.error('unicode error', exc_info=True)
             except Exception as e:
-                self.progbar.stop()
+                self.state.set('Download stopped')
                 logging.error('>: ', exc_info=True)
-                print(e)
+                print('Internal error: ', e)
+
         temp_vid_dl = threading.Thread(name='temp_vid_dl', target=callback)
         temp_vid_dl.start()
 
     def progress_callback(self, total, recvd, ratio, rate, eta):
         self.update_idletasks()
         if recvd == total:
-            self.progbar.stop()
+
             self.state.set('Download complete')
 
     def download_video_callback(self):
@@ -509,7 +585,7 @@ class DownloadItems(tk.Frame):
 
     def download_video(self, item_id):
         self.state.set('Preparing download please wait')
-        self.progbar.start()
+
 
         def callback():
             try:
@@ -522,17 +598,32 @@ class DownloadItems(tk.Frame):
                                     quiet=False,
                                     callback=self.progress_callback,
                                     meta=True)
-            except (TypeError, AttributeError) as e:
+            except ValueError:
+                #self.missing_id_warning()
+                tkMessageBox.showwarning(title='No video ID',
+                                         message='Select a video from '
+                                                 'the list first')
+                self.state.set('Download stopped')
+            except (TypeError, AttributeError):
                 tkMessageBox.showwarning('No file type', 'Select a file type '
                                                       'from the '
                                          'download options first')
-                self.progbar.stop()
+                self.state.set('Download stopped')
+            except OSError:
+                self.missing_folder_warning()
+                self.state.set('Download stopped')
+            except UnicodeDecodeError:
+                tkMessageBox.showerror('Error', 'Unable to process this '
+                                                'video, '
+                                                'please try another.')
+                logging.error('unicode error', exc_info=True)
             except Exception as e:
-                tkMessageBox.showerror('Error', 'There was an internal error, please try again.')
-                # self.missing_folder_warning()
+                tkMessageBox.showerror('Error', 'There was an internal error, '
+                                                'please try again.')
+                self.state.set('Download stopped')
                 print('Error: ', e)
                 logging.error('Error: {}'.format(e), exc_info=True)
-                self.progbar.stop()
+
 
 
         t = threading.Thread(name='vid_download', target=callback)
@@ -555,6 +646,9 @@ class MainApplication(tk.Frame):
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.parent.config(background='#676767')
+        s = ttk.Style()
+        s.theme_use('default')
+
         self.menubar = MenuBar(parent)
         self.search_items = SearchItems(parent)
         self.result_tree = ResultTree(parent)
@@ -564,10 +658,16 @@ class MainApplication(tk.Frame):
         self.result_tree.grid()
         self.download_items.grid()
 
+        self.parent.update_idletasks()
+        self.parent.after_idle(lambda: self.parent.minsize(
+            self.parent.winfo_width(), self.parent.winfo_height()))
+
+
 root = tk.Tk()
 root.title('YT to mp3')
+#root.geometry()
 root.update()
-root.minsize(root.winfo_width(), root.winfo_height())
+#root.minsize(root.winfo_width(), root.winfo_height())
 
 app = MainApplication(root)
 

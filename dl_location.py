@@ -1,1 +1,0 @@
-dl_loc = '/Users/Edit4/Desktop/j/YT2Mp3/'
