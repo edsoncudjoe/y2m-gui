@@ -25,10 +25,12 @@ parse = ConfigParser.SafeConfigParser()
 config_file = './config.ini'
 try:
     parse.readfp(open(config_file))
+    dl_loc = parse.get('download', 'directory')
 except IOError:
     logging.error('Unable to locate config file', exc_info=True)
-
-dl_loc = parse.get('download', 'directory')
+except Exception:
+    pass
+# dl_loc = parse.get('download', 'directory')
 
 N = tk.N
 S = tk.S
@@ -48,10 +50,10 @@ fc_options = {
 }
 
 # Linux - local destination for ffmpeg
-if platform.system() == 'Linux':
-    print('l')
-    AudioSegment.converter = \
-        "/home/dev/Apps/ffmpeg-git-20150826-64bit-static/ffmpeg"
+#if platform.system() == 'Linux':
+#    print('l')
+#    AudioSegment.converter = \
+#        "/home/dev/Apps/ffmpeg-git-20150826-64bit-static/ffmpeg"
 
 
 class Setting(tk.Frame):
@@ -61,7 +63,7 @@ class Setting(tk.Frame):
         tk.Frame.__init__(self, parent)
         self.parent = parent
 
-        self.download_dir = dl_loc
+        self.download_dir = None
         self.download_loc_display = tk.StringVar()
         self.default_result_amt = tk.StringVar()
         self.default_result_amt.set('25')
@@ -116,24 +118,27 @@ class Setting(tk.Frame):
         destination and write the location into a settings file.
         """
         user_dir = askdirectory()
-        self.download_dir = user_dir + '/YT2Mp3/'
-        os.mkdir(self.download_dir)
-        self.download_loc_display.set(self.download_dir)
+        try:
+            self.download_dir = user_dir + '/YT2Mp3/'
+            os.mkdir(self.download_dir)
+            self.download_loc_display.set(self.download_dir)
         #with open('dl_location.py', 'w') as set_download:
         #    set_download.write('dl_loc = \'{}\''.format(
         #        self.download_dir))
 
         # ConfigParser
-        dldir_conf = open('./config.ini', 'w')
-        Settings.add_section('download')
-        Settings.set('download', 'directory', self.download_dir)
-        Settings.write(dldir_conf)
-        dldir_conf.close()
+            dldir_conf = open('./config.ini', 'w')
+            Settings.add_section('download')
+            Settings.set('download', 'directory', self.download_dir)
+            Settings.write(dldir_conf)
+            dldir_conf.close()
 
-        tkMessageBox.showinfo('Download directory saved', 'Please restart the '
+            tkMessageBox.showinfo('Download directory saved', 'Please restart the '
                                                  'application for the '
                                                  'directory settings to take '
                                                           'effect.')
+        except OSError:
+            pass
 
     def set_search_max(self):
         """
@@ -430,7 +435,7 @@ class DownloadItems(tk.Frame):
         self.parent.columnconfigure(0, weight=1)
 
         self.choice_id = None
-        self.download_dir = dl_loc
+        self.download_dir = None
         self.state = tk.StringVar()
         self.opt_var = tk.StringVar()
         self.dl_options = ['none']
