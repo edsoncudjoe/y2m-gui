@@ -269,7 +269,7 @@ class ResultTree(tk.Frame):
         self.user_choice = None
         self.start_pafy = None
 
-        self.results_frame = tk.LabelFrame(self.parent, bg='green',
+        self.results_frame = tk.LabelFrame(self.parent, bg='#676767',
                                            fg='#f5f5f5',
                                            text="results",
                                            relief=tk.FLAT,
