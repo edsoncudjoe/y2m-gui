@@ -11,24 +11,16 @@ from settings import YtSettings
 from tkFileDialog import askdirectory
 from converter import Converter
 import tkMessageBox
-#from dl_location import dl_loc
 
 logging.basicConfig(level=logging.DEBUG,
-                    filename='ytdl.log',
+                    filename='y2m.log',
                     format='%(asctime)s %(levelname)-8s %(message)s',
                     datefmt='%a, %d %b %Y %H:%M:%S',
                     filemode='w')
 logging.getLogger(__name__)
 
 Settings = ConfigParser.ConfigParser()
-parse = ConfigParser.SafeConfigParser()
-config_file = './config.ini'
-try:
-    parse.readfp(open(config_file))
-except IOError:
-    logging.error('Unable to locate config file', exc_info=True)
-
-dl_loc = parse.get('download', 'directory')
+Parse = ConfigParser.SafeConfigParser()
 
 N = tk.N
 S = tk.S
@@ -37,7 +29,8 @@ W = tk.W
 END = tk.END
 
 new = YtSettings()
-fc = Converter()
+fc = Converter(ffmpeg_path='/usr/local/bin/ffmpeg',
+               ffprobe_path='/usr/local/bin/ffprobe')
 fc_options = {
     'format': 'mp3',
     'audio': {
@@ -60,8 +53,17 @@ class Setting(tk.Frame):
     def __init__(self, parent):
         tk.Frame.__init__(self, parent)
         self.parent = parent
+        self.dl_loc = None
+        try:
+            Parse.readfp(open('./config.ini'))
+            self.dl_loc = Parse.get('download', 'directory')
+        except IOError:
+            logging.error('Unable to locate config file', exc_info=True)
+            tkMessageBox.showwarning('Warning', 'no directory saved')
+        except Exception as e:
+            print(e)
 
-        self.download_dir = dl_loc
+        self.download_dir = self.dl_loc
         self.download_loc_display = tk.StringVar()
         self.default_result_amt = tk.StringVar()
         self.default_result_amt.set('25')
@@ -119,9 +121,6 @@ class Setting(tk.Frame):
         self.download_dir = user_dir + '/YT2Mp3/'
         os.mkdir(self.download_dir)
         self.download_loc_display.set(self.download_dir)
-        #with open('dl_location.py', 'w') as set_download:
-        #    set_download.write('dl_loc = \'{}\''.format(
-        #        self.download_dir))
 
         # ConfigParser
         dldir_conf = open('./config.ini', 'w')
@@ -421,6 +420,7 @@ class ResultTree(tk.Frame):
 
 class DownloadItems(tk.Frame):
     """"""
+
     def __init__(self, parent):
         tk.Frame.__init__(self, parent)
         self.parent = parent
@@ -428,15 +428,26 @@ class DownloadItems(tk.Frame):
         self.columnconfigure(0, weight=1)
         self.parent.rowconfigure(0, weight=1)
         self.parent.columnconfigure(0, weight=1)
+        self.dl_loc = None
+        try:
+#            parse = ConfigParser.SafeConfigParser()
+#            config_file = open('config.ini', 'r')
+            Parse.readfp(open('./config.ini'))
+            self.dl_loc = Parse.get('download', 'directory')
+#        except IOError:
+#            logging.error('Unable to locate config file', exc_info=True)
+        except Exception as e:
+            print(e)
 
         self.choice_id = None
-        self.download_dir = dl_loc
+        self.download_dir = self.dl_loc
         self.state = tk.StringVar()
         self.opt_var = tk.StringVar()
         self.dl_options = ['none']
         self.temp_vid = None
         self.fname = None
         self.temp_vid = None
+        self.video_location = None
 
         self.choice_dl = tk.Frame(self.parent, bg='#676767', padx=5, pady=2)
         self.choice_btns = tk.Frame(self.choice_dl, bg='#676767', padx=40,
@@ -493,10 +504,10 @@ class DownloadItems(tk.Frame):
         one if none is present
         """
         try:
-            self.download_dir = parse.get('download', 'directory')
             if self.download_dir:
                 self.video_location = self.download_dir + 'Videos/'
-            if not os.path.exists(self.video_location):
+                logging.info(self.video_location)
+            if not os.path.exists(self.video_location.encode('utf-8')):
                 os.mkdir(self.video_location)
         except Exception as c:
             logging.error(c, exc_info=True)
@@ -508,7 +519,6 @@ class DownloadItems(tk.Frame):
         one if none is present
         """
         try:
-            self.download_dir = parse.get('download', 'directory')
             if self.download_dir:
                 self.audio_location = self.download_dir + 'Audio/'
                 self.temp_file = self.download_dir + 'temp/'
@@ -577,7 +587,6 @@ class DownloadItems(tk.Frame):
 
     def download_video_callback(self):
         try:
-            # self.res = ResultTree(parent=None)
             self.choice_id = app.result_tree.choice_id
             self.download_video(self.choice_id)
         except AttributeError:
@@ -585,7 +594,6 @@ class DownloadItems(tk.Frame):
 
     def download_video(self, item_id):
         self.state.set('Preparing download please wait')
-
 
         def callback():
             try:
@@ -664,10 +672,8 @@ class MainApplication(tk.Frame):
 
 
 root = tk.Tk()
-root.title('YT to mp3')
-#root.geometry()
+root.title('Y2M')
 root.update()
-#root.minsize(root.winfo_width(), root.winfo_height())
 
 app = MainApplication(root)
 

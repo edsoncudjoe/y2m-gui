@@ -9,3 +9,6 @@ snip.py
 errors.log
 ytdl.log
 dl_location.py
+config.ini
+y2m.log
+setup.py
