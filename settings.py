@@ -1,5 +1,9 @@
-from apiclient.discovery import build
-
+try:
+    from apiclient.discovery import build
+except:
+    import sys
+    sys.path.insert(0, 'googleapiclient/')
+    from googleapiclient.discovery import build
 
 class YtSettings(object):
     def __init__(self):
