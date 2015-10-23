@@ -20,20 +20,7 @@ logging.basicConfig(level=logging.DEBUG,
 logging.getLogger(__name__)
 
 Settings = ConfigParser.ConfigParser()
-<<<<<<< HEAD
 Parse = ConfigParser.SafeConfigParser()
-=======
-parse = ConfigParser.SafeConfigParser()
-config_file = './config.ini'
-try:
-    parse.readfp(open(config_file))
-    dl_loc = parse.get('download', 'directory')
-except IOError:
-    logging.error('Unable to locate config file', exc_info=True)
-except Exception:
-    pass
-# dl_loc = parse.get('download', 'directory')
->>>>>>> 9de1e35532f3c5f8d3ff807430fbe983bde0ca4b
 
 N = tk.N
 S = tk.S
@@ -66,7 +53,6 @@ class Setting(tk.Frame):
     def __init__(self, parent):
         tk.Frame.__init__(self, parent)
         self.parent = parent
-<<<<<<< HEAD
         self.dl_loc = None
         try:
             Parse.readfp(open('./config.ini'))
@@ -78,10 +64,6 @@ class Setting(tk.Frame):
             print(e)
 
         self.download_dir = self.dl_loc
-=======
-
-        self.download_dir = None
->>>>>>> 9de1e35532f3c5f8d3ff807430fbe983bde0ca4b
         self.download_loc_display = tk.StringVar()
         self.default_result_amt = tk.StringVar()
         self.default_result_amt.set('25')
@@ -136,19 +118,10 @@ class Setting(tk.Frame):
         destination and write the location into a settings file.
         """
         user_dir = askdirectory()
-<<<<<<< HEAD
-        self.download_dir = user_dir + '/YT2Mp3/'
-        os.mkdir(self.download_dir)
-        self.download_loc_display.set(self.download_dir)
-=======
         try:
             self.download_dir = user_dir + '/YT2Mp3/'
             os.mkdir(self.download_dir)
             self.download_loc_display.set(self.download_dir)
-        #with open('dl_location.py', 'w') as set_download:
-        #    set_download.write('dl_loc = \'{}\''.format(
-        #        self.download_dir))
->>>>>>> 9de1e35532f3c5f8d3ff807430fbe983bde0ca4b
 
         # ConfigParser
             dldir_conf = open('./config.ini', 'w')
@@ -470,11 +443,9 @@ class DownloadItems(tk.Frame):
             print(e)
 
         self.choice_id = None
-<<<<<<< HEAD
+
         self.download_dir = self.dl_loc
-=======
-        self.download_dir = None
->>>>>>> 9de1e35532f3c5f8d3ff807430fbe983bde0ca4b
+
         self.state = tk.StringVar()
         self.opt_var = tk.StringVar()
         self.dl_options = ['none']
