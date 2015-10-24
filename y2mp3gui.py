@@ -29,8 +29,19 @@ W = tk.W
 END = tk.END
 
 new = YtSettings()
-fc = Converter(ffmpeg_path='/usr/local/bin/ffmpeg',
-               ffprobe_path='/usr/local/bin/ffprobe')
+
+# Linux - local destination for ffmpeg
+#if platform.system() == 'Linux':
+#    print('l')
+#    AudioSegment.converter = \
+#        "/home/dev/Apps/ffmpeg-git-20150826-64bit-static/ffmpeg"
+#    fc = Converter()
+if platform.system() == 'Darwin':
+    fc = Converter(ffmpeg_path='/usr/local/bin/ffmpeg',
+                   ffprobe_path='/usr/local/bin/ffprobe')
+else:
+    fc = Converter()
+
 fc_options = {
     'format': 'mp3',
     'audio': {
@@ -39,12 +50,6 @@ fc_options = {
         'channels': 2
     }
 }
-
-# Linux - local destination for ffmpeg
-#if platform.system() == 'Linux':
-#    print('l')
-#    AudioSegment.converter = \
-#        "/home/dev/Apps/ffmpeg-git-20150826-64bit-static/ffmpeg"
 
 
 class Setting(tk.Frame):
