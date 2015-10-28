@@ -34,7 +34,8 @@ if platform.system() == 'Darwin':
     fc = Converter(ffmpeg_path='/usr/local/bin/ffmpeg',
                    ffprobe_path='/usr/local/bin/ffprobe')
 else:
-    fc = Converter()
+    # fc = Converter()
+    pass
 
 fc_options = {
     'format': 'mp3',
@@ -381,7 +382,7 @@ class ResultTree(tk.Frame):
 
         self.tree_columns = ("Name", "Items")
         self.tree = ttk.Treeview(self.results_frame, columns=self.tree_columns,
-                                 height=15,
+                                 height=20,
                                  selectmode='browse')
         self.tree.tag_bind("v_", "<Double-1>", self.on_double_click)
         self.tree.tag_bind("pl_", "<Double-1>", self.on_double_click)
@@ -532,7 +533,7 @@ class DownloadItems(tk.Frame):
         self.parent.columnconfigure(0, weight=1)
         self.dl_loc = None
         self.choice_id = None
-        self.download_dir = self.dl_loc
+        self.download_dir = None
 
         self.state = tk.StringVar()
         self.opt_var = tk.StringVar()
@@ -577,19 +578,15 @@ class DownloadItems(tk.Frame):
         try:
             Parse.readfp(open('./config.ini'))
             self.dl_loc = Parse.get('download', 'directory')
-            self.ffmpeg_loc = Parse.get('ffmpeg', 'path')
-            self.ffprobe_loc = Parse.get('ffprobe', 'path')
+            self.ffmpeg_loc = Parse.get('ffmpeg', 'ffmpeg')
+            self.ffprobe_loc = Parse.get('ffmpeg', 'ffprobe')
+            self.download_dir = self.dl_loc
+            self.file_convert = Converter(self.ffmpeg_loc, self.ffprobe_loc)
         except IOError as io:
             logging.error('Unable to locate config file', exc_info=True)
-            print(io)
-        except Exception as e:
             tkMessageBox.showerror('No download folder', 'Before you start, '
                                                          'set your download '
                                                          'folder in Settings.')
-
-    def set_converter(self):
-
-        self.f_convert = Converter(self.ffmpeg_loc, self.ffprobe_loc)
 
     def refresh_dl_options(self):
         """Reset option variable and insert new download options"""
@@ -616,12 +613,28 @@ class DownloadItems(tk.Frame):
         try:
             if self.download_dir:
                 self.video_location = self.download_dir + 'Videos/'
-                logging.info(self.video_location)
+                logging.info('DL directory: {}'.format(self.video_location))
             if not os.path.exists(self.video_location.encode('utf-8')):
                 os.mkdir(self.video_location)
+            else:
+                tkMessageBox.showwarning('No download folder',
+                                         'Create a download folder '
+                                         'in Settings')
+        except AttributeError as ae:
+            tkMessageBox.showerror('Error', 'No current download folder. '
+                                            'Create one in Settings')
+            logging.error(ae, exc_info=True)
+            print(ae)
+            raise
+        except OSError as o:
+            tkMessageBox.showerror('Error', 'No current download folder. '
+                                            'Create one in Settings')
+            logging.error(o, exc_info=True)
+            print(o)
+            raise
         except Exception as c:
             logging.error(c, exc_info=True)
-            raise c
+            print(c)
 
     def check_audio_download_folder(self):
         """
@@ -637,6 +650,10 @@ class DownloadItems(tk.Frame):
                 os.mkdir(self.audio_location)
             if not os.path.exists(self.temp_file):
                 os.mkdir(self.temp_file)
+        except AttributeError as ae:
+            tkMessageBox.showerror('Error', 'No current download folder. '
+                                            'Create one in Settings')
+            logging.error(ae, exc_info=True)
         except Exception as m:
             logging.error(m, exc_info=True)
             raise m
@@ -660,7 +677,7 @@ class DownloadItems(tk.Frame):
                 filename = self.temp_vid.filename.encode('utf-8')
                 working_file = self.temp_file + filename
                 encoded = self.audio_location + filename + '.mp3'
-                conv = fc.convert(working_file, encoded, fc_options,
+                conv = self.file_convert.convert(working_file, encoded, fc_options,
                                   timeout=None)
                 self.state.set('Converting to mp3...')
                 for time in conv:
@@ -716,13 +733,17 @@ class DownloadItems(tk.Frame):
                                     quiet=False,
                                     callback=self.progress_callback,
                                     meta=True)
+            except AttributeError as ae:
+                tkMessageBox.showerror('Error', 'No current download folder. '
+                                                'Create one in Settings')
+                logging.error(ae, exc_info=True)
+                self.state.set('Download stopped')
             except ValueError:
-                #self.missing_id_warning()
                 tkMessageBox.showwarning(title='No video ID',
                                          message='Select a video from '
                                                  'the list first')
                 self.state.set('Download stopped')
-            except (TypeError, AttributeError):
+            except TypeError:
                 tkMessageBox.showwarning('No file type', 'Select a file type '
                                                       'from the '
                                          'download options first')
