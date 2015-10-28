@@ -53,9 +53,13 @@ class Setting(tk.Frame):
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.dl_loc = None
+        self.ffmpeg_path = None
+        self.ffprobe_path = None
         try:
             Parse.readfp(open('./config.ini'))
             self.dl_loc = Parse.get('download', 'directory')
+            self.ffmpeg_path = Parse.get('ffmpeg', 'ffmpeg')
+            self.ffprobe_path = Parse.get('ffmpeg', 'ffprobe')
         except IOError:
             logging.error('Unable to locate config file', exc_info=True)
             tkMessageBox.showwarning('Warning', 'no directory saved')
@@ -63,8 +67,10 @@ class Setting(tk.Frame):
             print(e)
 
         self.download_dir = self.dl_loc
-        self.ffmpeg_path = tk.StringVar()
-        self.ffprobe_path = tk.StringVar()
+        self.ffmpeg_path_var = tk.StringVar()
+        self.ffmpeg_path_var.set(self.ffmpeg_path)
+        self.ffprobe_path_var = tk.StringVar()
+        self.ffprobe_path_var.set(self.ffprobe_path)
         self.download_loc_display = tk.StringVar()
         self.default_result_amt = tk.StringVar()
         self.default_result_amt.set('25')
@@ -91,15 +97,20 @@ class Setting(tk.Frame):
                                           command=self.set_directory)
         self.ffmpeg_path_lbl = ttk.Label(self.main_settings_fr, text='FFMpeg '
                                                                 'location: ')
-        self.ffmpeg_path_entry = ttk.Entry(self.main_settings_fr,
-                                           textvariable=self.ffmpeg_path,
-                                           width=30)
+        self.ffmpeg_path_display = ttk.Entry(self.main_settings_fr,
+                                           textvariable=self.ffmpeg_path_var,
+                                           width=40)
+
+
+        # ======================
         self.ffprobe_path_lbl = ttk.Label(self.main_settings_fr,
                                           text='FFprobe '
                                                                  'location: ')
         self.ffprobe_path_entry = ttk.Entry(self.main_settings_fr,
-                                            textvariable=self.ffprobe_path,
-                                            width=30)
+                                            textvariable=self.ffprobe_path_var,
+                                            width=40)
+        # =======================
+
         self.max_result_lbl = ttk.Label(self.main_settings_fr, text='Number of '
                                                                  'results (Max '
                                                                  '50): ')
@@ -107,7 +118,7 @@ class Setting(tk.Frame):
                                      textvariable=self.default_result_amt,
                                      width=10)
         self.save_settings = ttk.Button(self.settings_win_btns, text='Apply',
-                                        command=self.set_search_max)
+                                        command=self.apply_button)
         self.cancel_settings = ttk.Button(self.settings_win_btns, text='Cancel',
                                           command=self.settings_win.destroy)
         self.close_settings = ttk.Button(self.settings_win_btns, text='OK',
@@ -119,12 +130,42 @@ class Setting(tk.Frame):
         self.max_result_lbl.grid(row=1, column=0)
         self.max_number.grid(row=1, column=1)
         self.ffmpeg_path_lbl.grid(row=2, column=0)
-        self.ffmpeg_path_entry.grid(row=2, column=1)
+        self.ffmpeg_path_display.grid(row=2, column=1)
         self.ffprobe_path_lbl.grid(row=3, column=0)
         self.ffprobe_path_entry.grid(row=3, column=1)
         self.cancel_settings.grid(row=0, column=0, sticky=E, padx=2)
         self.save_settings.grid(row=0, column=1, sticky=E, padx=2)
         self.close_settings.grid(row=0, column=2, sticky=E, padx=2)
+
+    def set_ffmpeg_location(self):
+        """
+        FFMpeg is needed for the Converter to work.
+        This function will set the path of ffmpeg if it can not be
+        automatically found.
+        """
+        self.ffmpeg_path = self.ffmpeg_path_var.get()
+
+        ffmpeg_conf = open('./config.ini', 'a')
+        Settings.add_section('ffmpeg')
+        Settings.set('ffmpeg', 'path', self.ffmpeg_path)
+        print('ffmpeg set: {}'.format(self.ffmpeg_path))
+        Settings.write(ffmpeg_conf)
+        ffmpeg_conf.close()
+
+    def set_ffprobe_location(self):
+        """
+        FFprobe is needed for the Converter to work.
+        This function will set the path of ffmpeg if it can not be
+        automatically found.
+        """
+        self.ffprobe_path = self.ffprobe_path_var.get()
+
+        ffprobe_conf = open('./config.ini', 'a')
+        Settings.add_section('ffprobe')
+        Settings.set('ffprobe', 'path', self.ffprobe_path)
+        print('ffprobe set: {}'.format(self.ffprobe_path))
+        Settings.write(ffprobe_conf)
+        ffprobe_conf.close()
 
     def set_directory(self):
         """
@@ -139,7 +180,7 @@ class Setting(tk.Frame):
             self.download_loc_display.set(self.download_dir)
 
         # ConfigParser
-            dldir_conf = open('./config.ini', 'w')
+            dldir_conf = open('./config.ini', 'a')
             Settings.add_section('download')
             Settings.set('download', 'directory', self.download_dir)
             Settings.write(dldir_conf)
@@ -173,6 +214,49 @@ class Setting(tk.Frame):
                                      message='Choose a search range '
                                              'between 1 and 50')
 
+    def apply_button(self):
+        if self.download_dir:
+            if len(self.ffmpeg_path_var.get()) > 0:
+                if len(self.ffprobe_path_var.get()) > 0:
+                    self.ffmpeg_path = self.ffmpeg_path_var.get()
+                    self.ffprobe_path = self.ffprobe_path_var.get()
+                    self.write_settings(dl_dir=self.download_dir,
+                                       ffmpeg_dir=self.ffmpeg_path,
+                                       ffprobe_dir=self.ffprobe_path)
+                else:
+                    print('No probe set')
+                    self.ffmpeg_path = self.ffmpeg_path_var.get()
+                    self.write_settings(dl_dir=self.download_dir,
+                                       ffmpeg_dir=self.ffmpeg_path)
+            else:
+                print('ffmpeg not set')
+                self.write_settings(dl_dir=self.download_dir)
+        elif len(self.ffmpeg_path_var.get()) > 0:
+            if len(self.ffprobe_path_var.get()) > 0:
+                self.ffmpeg_path = self.ffmpeg_path_var.get()
+                self.ffprobe_path = self.ffprobe_path_var.get()
+                self.write_settings(ffmpeg_dir=self.ffmpeg_path,
+                                       ffprobe_dir=self.ffprobe_path)
+            else:
+                self.ffmpeg_path = self.ffmpeg_path_var.get()
+                self.write_settings(ffmpeg_dir=self.ffmpeg_path)
+        elif len(self.ffprobe_path_var.get()) > 0:
+            self.ffprobe_path = self.ffprobe_path_var.get()
+            self.write_settings(ffprobe_dir=self.ffprobe_path)
+        else:
+            print('ffmpeg plugins not set')
+        self.set_search_max()
+
+    def write_settings(self, dl_dir=None, ffmpeg_dir=None, ffprobe_dir=None):
+        print(dl_dir, ffmpeg_dir, ffprobe_dir)
+        cnf_file = open('./config.ini', 'w')
+        Settings.add_section('ffmpeg')
+        Settings.add_section('download')
+        Settings.set('download', 'directory', dl_dir)
+        Settings.set('ffmpeg', 'ffmpeg', ffmpeg_dir)
+        Settings.set('ffmpeg', 'ffprobe', ffprobe_dir)
+        Settings.write(cnf_file)
+        cnf_file.close()
 
 class MenuBar(tk.Frame):
     def __init__(self, parent):
@@ -447,18 +531,7 @@ class DownloadItems(tk.Frame):
         self.parent.rowconfigure(0, weight=1)
         self.parent.columnconfigure(0, weight=1)
         self.dl_loc = None
-        try:
-#            parse = ConfigParser.SafeConfigParser()
-#            config_file = open('config.ini', 'r')
-            Parse.readfp(open('./config.ini'))
-            self.dl_loc = Parse.get('download', 'directory')
-#        except IOError:
-#            logging.error('Unable to locate config file', exc_info=True)
-        except Exception as e:
-            print(e)
-
         self.choice_id = None
-
         self.download_dir = self.dl_loc
 
         self.state = tk.StringVar()
@@ -500,6 +573,23 @@ class DownloadItems(tk.Frame):
         self.download_item.grid(row=1, column=0, pady=2)
         self.mp3_btn.grid(row=1, column=1, pady=2)
         self.dl_status.grid(sticky=W + E + S)
+
+        try:
+            Parse.readfp(open('./config.ini'))
+            self.dl_loc = Parse.get('download', 'directory')
+            self.ffmpeg_loc = Parse.get('ffmpeg', 'path')
+            self.ffprobe_loc = Parse.get('ffprobe', 'path')
+        except IOError as io:
+            logging.error('Unable to locate config file', exc_info=True)
+            print(io)
+        except Exception as e:
+            tkMessageBox.showerror('No download folder', 'Before you start, '
+                                                         'set your download '
+                                                         'folder in Settings.')
+
+    def set_converter(self):
+
+        self.f_convert = Converter(self.ffmpeg_loc, self.ffprobe_loc)
 
     def refresh_dl_options(self):
         """Reset option variable and insert new download options"""
