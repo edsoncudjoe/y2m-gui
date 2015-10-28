@@ -30,12 +30,6 @@ END = tk.END
 
 new = YtSettings()
 
-# Linux - local destination for ffmpeg
-#if platform.system() == 'Linux':
-#    print('l')
-#    AudioSegment.converter = \
-#        "/home/dev/Apps/ffmpeg-git-20150826-64bit-static/ffmpeg"
-#    fc = Converter()
 if platform.system() == 'Darwin':
     fc = Converter(ffmpeg_path='/usr/local/bin/ffmpeg',
                    ffprobe_path='/usr/local/bin/ffprobe')
@@ -69,6 +63,8 @@ class Setting(tk.Frame):
             print(e)
 
         self.download_dir = self.dl_loc
+        self.ffmpeg_path = tk.StringVar()
+        self.ffprobe_path = tk.StringVar()
         self.download_loc_display = tk.StringVar()
         self.default_result_amt = tk.StringVar()
         self.default_result_amt.set('25')
@@ -93,7 +89,17 @@ class Setting(tk.Frame):
                                          textvariable=self.download_loc_display)
         self.location_change = ttk.Button(self.main_settings_fr, text='Change',
                                           command=self.set_directory)
-
+        self.ffmpeg_path_lbl = ttk.Label(self.main_settings_fr, text='FFMpeg '
+                                                                'location: ')
+        self.ffmpeg_path_entry = ttk.Entry(self.main_settings_fr,
+                                           textvariable=self.ffmpeg_path,
+                                           width=30)
+        self.ffprobe_path_lbl = ttk.Label(self.main_settings_fr,
+                                          text='FFprobe '
+                                                                 'location: ')
+        self.ffprobe_path_entry = ttk.Entry(self.main_settings_fr,
+                                            textvariable=self.ffprobe_path,
+                                            width=30)
         self.max_result_lbl = ttk.Label(self.main_settings_fr, text='Number of '
                                                                  'results (Max '
                                                                  '50): ')
@@ -112,6 +118,10 @@ class Setting(tk.Frame):
         self.location_change.grid(row=0, column=2, padx=2)
         self.max_result_lbl.grid(row=1, column=0)
         self.max_number.grid(row=1, column=1)
+        self.ffmpeg_path_lbl.grid(row=2, column=0)
+        self.ffmpeg_path_entry.grid(row=2, column=1)
+        self.ffprobe_path_lbl.grid(row=3, column=0)
+        self.ffprobe_path_entry.grid(row=3, column=1)
         self.cancel_settings.grid(row=0, column=0, sticky=E, padx=2)
         self.save_settings.grid(row=0, column=1, sticky=E, padx=2)
         self.close_settings.grid(row=0, column=2, sticky=E, padx=2)
