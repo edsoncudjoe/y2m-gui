@@ -9,7 +9,7 @@ import platform
 import ConfigParser
 from settings import YtSettings
 from tkFileDialog import askdirectory
-from converter import Converter
+import converter
 import tkMessageBox
 
 logging.basicConfig(level=logging.DEBUG,
@@ -61,7 +61,7 @@ class Setting(tk.Frame):
             self.dl_loc = Parse.get('download', 'directory')
             self.ffmpeg_path = Parse.get('ffmpeg', 'ffmpeg')
             self.ffprobe_path = Parse.get('ffmpeg', 'ffprobe')
-        except IOError:
+        except (IOError, ConfigParser.NoSectionError):
             logging.error('Unable to locate config file', exc_info=True)
             tkMessageBox.showwarning('Warning', 'no directory saved')
         except Exception as e:
@@ -101,17 +101,12 @@ class Setting(tk.Frame):
         self.ffmpeg_path_display = ttk.Entry(self.main_settings_fr,
                                            textvariable=self.ffmpeg_path_var,
                                            width=40)
-
-
-        # ======================
         self.ffprobe_path_lbl = ttk.Label(self.main_settings_fr,
                                           text='FFprobe '
                                                                  'location: ')
         self.ffprobe_path_entry = ttk.Entry(self.main_settings_fr,
                                             textvariable=self.ffprobe_path_var,
                                             width=40)
-        # =======================
-
         self.max_result_lbl = ttk.Label(self.main_settings_fr, text='Number of '
                                                                  'results (Max '
                                                                  '50): ')
@@ -146,12 +141,6 @@ class Setting(tk.Frame):
         """
         self.ffmpeg_path = self.ffmpeg_path_var.get()
 
-        ffmpeg_conf = open('./config.ini', 'a')
-        Settings.add_section('ffmpeg')
-        Settings.set('ffmpeg', 'path', self.ffmpeg_path)
-        print('ffmpeg set: {}'.format(self.ffmpeg_path))
-        Settings.write(ffmpeg_conf)
-        ffmpeg_conf.close()
 
     def set_ffprobe_location(self):
         """
@@ -161,12 +150,6 @@ class Setting(tk.Frame):
         """
         self.ffprobe_path = self.ffprobe_path_var.get()
 
-        ffprobe_conf = open('./config.ini', 'a')
-        Settings.add_section('ffprobe')
-        Settings.set('ffprobe', 'path', self.ffprobe_path)
-        print('ffprobe set: {}'.format(self.ffprobe_path))
-        Settings.write(ffprobe_conf)
-        ffprobe_conf.close()
 
     def set_directory(self):
         """
@@ -179,18 +162,6 @@ class Setting(tk.Frame):
             self.download_dir = user_dir + '/YT2Mp3/'
             os.mkdir(self.download_dir)
             self.download_loc_display.set(self.download_dir)
-
-        # ConfigParser
-            dldir_conf = open('./config.ini', 'a')
-            Settings.add_section('download')
-            Settings.set('download', 'directory', self.download_dir)
-            Settings.write(dldir_conf)
-            dldir_conf.close()
-
-            tkMessageBox.showinfo('Download directory saved', 'Please restart the '
-                                                 'application for the '
-                                                 'directory settings to take '
-                                                          'effect.')
         except OSError:
             pass
 
@@ -250,14 +221,17 @@ class Setting(tk.Frame):
 
     def write_settings(self, dl_dir=None, ffmpeg_dir=None, ffprobe_dir=None):
         print(dl_dir, ffmpeg_dir, ffprobe_dir)
-        cnf_file = open('./config.ini', 'w')
-        Settings.add_section('ffmpeg')
-        Settings.add_section('download')
-        Settings.set('download', 'directory', dl_dir)
-        Settings.set('ffmpeg', 'ffmpeg', ffmpeg_dir)
-        Settings.set('ffmpeg', 'ffprobe', ffprobe_dir)
-        Settings.write(cnf_file)
-        cnf_file.close()
+        try:
+            cnf_file = open('./config.ini', 'w')
+            Settings.add_section('ffmpeg')
+            Settings.add_section('download')
+            Settings.set('download', 'directory', dl_dir)
+            Settings.set('ffmpeg', 'ffmpeg', ffmpeg_dir)
+            Settings.set('ffmpeg', 'ffprobe', ffprobe_dir)
+            Settings.write(cnf_file)
+            cnf_file.close()
+        except ConfigParser.DuplicateSectionError:
+            pass
 
 class MenuBar(tk.Frame):
     def __init__(self, parent):
@@ -354,7 +328,9 @@ class SearchItems(tk.Frame):
             tkMessageBox.showerror("Server Error", "I am unable to contact YouTube's Servers"
                                                    "\nPlease check your internet connection")
             logging.error("Unable to contact YouTube servers", exc_info=True)
-
+        except Exception as e:
+            tkMessageBox.showerror("Internal Error", "Please try again")
+            logging.error("Error: ", e, exc_info=True)
 
 class ResultTree(tk.Frame):
     """"""
@@ -426,7 +402,6 @@ class ResultTree(tk.Frame):
                                             target=self.get_dl_options,
                                             args=(self.choice_id, ))
         dl_option_thread.start()
-        # print self.choice_id
 
     def get_dl_options(self, clip_id):
         """
@@ -581,12 +556,13 @@ class DownloadItems(tk.Frame):
             self.ffmpeg_loc = Parse.get('ffmpeg', 'ffmpeg')
             self.ffprobe_loc = Parse.get('ffmpeg', 'ffprobe')
             self.download_dir = self.dl_loc
-            self.file_convert = Converter(self.ffmpeg_loc, self.ffprobe_loc)
-        except IOError as io:
+            self.file_convert = converter.Converter(self.ffmpeg_loc, self.ffprobe_loc)
+        except (IOError, ConfigParser.NoSectionError, converter.ffmpeg.FFMpegError):
             logging.error('Unable to locate config file', exc_info=True)
-            tkMessageBox.showerror('No download folder', 'Before you start, '
+            tkMessageBox.showwarning('Update Settings', 'Before you start, '
                                                          'set your download '
-                                                         'folder in Settings.')
+                                                         'folder and ffmpeg codec information in the Settings window.')
+
 
     def refresh_dl_options(self):
         """Reset option variable and insert new download options"""
@@ -689,6 +665,7 @@ class DownloadItems(tk.Frame):
             except (TypeError, AttributeError):
                 tkMessageBox.showwarning('No file type', 'Select an item '
                                                       'from the results first')
+                print Exception
                 self.state.set('Download stopped')
             except OSError:
                 self.missing_folder_warning()
