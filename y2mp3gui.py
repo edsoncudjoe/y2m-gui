@@ -19,8 +19,8 @@ logging.basicConfig(level=logging.DEBUG,
                     filemode='w')
 logging.getLogger(__name__)
 
-Settings = ConfigParser.ConfigParser()
-Parse = ConfigParser.SafeConfigParser()
+set_cnf = ConfigParser.ConfigParser()
+parsef = ConfigParser.SafeConfigParser()
 
 N = tk.N
 S = tk.S
@@ -29,22 +29,6 @@ W = tk.W
 END = tk.END
 
 new = YtSettings()
-
-if platform.system() == 'Darwin':
-    fc = Converter(ffmpeg_path='/usr/local/bin/ffmpeg',
-                   ffprobe_path='/usr/local/bin/ffprobe')
-else:
-    # fc = Converter()
-    pass
-
-fc_options = {
-    'format': 'mp3',
-    'audio': {
-        'codec': 'mp3',
-        'bitrate': '44100',
-        'channels': 2
-    }
-}
 
 
 class Setting(tk.Frame):
@@ -57,15 +41,15 @@ class Setting(tk.Frame):
         self.ffmpeg_path = None
         self.ffprobe_path = None
         try:
-            Parse.readfp(open('./config.ini'))
-            self.dl_loc = Parse.get('download', 'directory')
-            self.ffmpeg_path = Parse.get('ffmpeg', 'ffmpeg')
-            self.ffprobe_path = Parse.get('ffmpeg', 'ffprobe')
+            parsef.readfp(open('./config.ini'))
+            self.dl_loc = parsef.get('download', 'directory')
+            self.ffmpeg_path = parsef.get('ffmpeg', 'ffmpeg')
+            self.ffprobe_path = parsef.get('ffmpeg', 'ffprobe')
         except (IOError, ConfigParser.NoSectionError):
             logging.error('Unable to locate config file', exc_info=True)
             tkMessageBox.showwarning('Warning', 'no directory saved')
         except Exception as e:
-            print(e)
+            logging.warning(e, exc_info=True)
 
         self.download_dir = self.dl_loc
         self.ffmpeg_path_var = tk.StringVar()
@@ -135,27 +119,20 @@ class Setting(tk.Frame):
 
     def set_ffmpeg_location(self):
         """
-        FFMpeg is needed for the Converter to work.
-        This function will set the path of ffmpeg if it can not be
-        automatically found.
+        Set the path of ffmpeg.
         """
         self.ffmpeg_path = self.ffmpeg_path_var.get()
 
-
     def set_ffprobe_location(self):
         """
-        FFprobe is needed for the Converter to work.
-        This function will set the path of ffmpeg if it can not be
-        automatically found.
+        Set the path of FFprobe
         """
         self.ffprobe_path = self.ffprobe_path_var.get()
 
-
     def set_directory(self):
         """
-        User selects directory they wish to download to.
-        This function will set the download location to the chosen
-        destination and write the location into a settings file.
+        Set the download location to the user destination and write the
+        location into a settings file.
         """
         user_dir = askdirectory()
         try:
@@ -167,9 +144,7 @@ class Setting(tk.Frame):
 
     def set_search_max(self):
         """
-        Checks search result choice is between 1 and 50.
-        Sets this amount temporarily to the search query in the YTSettings
-        class.
+        Check search result choice is between 1 and 50.
         """
         try:
             self.a = int(self.max_number.get())
@@ -190,48 +165,50 @@ class Setting(tk.Frame):
         if self.download_dir:
             if len(self.ffmpeg_path_var.get()) > 0:
                 if len(self.ffprobe_path_var.get()) > 0:
-                    self.ffmpeg_path = self.ffmpeg_path_var.get()
-                    self.ffprobe_path = self.ffprobe_path_var.get()
+                    self.set_ffmpeg_location()
+                    self.set_ffprobe_location()
                     self.write_settings(dl_dir=self.download_dir,
                                        ffmpeg_dir=self.ffmpeg_path,
                                        ffprobe_dir=self.ffprobe_path)
                 else:
-                    print('No probe set')
-                    self.ffmpeg_path = self.ffmpeg_path_var.get()
+                    self.set_ffmpeg_location()
                     self.write_settings(dl_dir=self.download_dir,
                                        ffmpeg_dir=self.ffmpeg_path)
+                    logging.warning('ffprobe not set', exc_info=True)
             else:
-                print('ffmpeg not set')
                 self.write_settings(dl_dir=self.download_dir)
+                logging.warning('ffmpeg + ffprobe not set')
         elif len(self.ffmpeg_path_var.get()) > 0:
             if len(self.ffprobe_path_var.get()) > 0:
-                self.ffmpeg_path = self.ffmpeg_path_var.get()
-                self.ffprobe_path = self.ffprobe_path_var.get()
+                self.set_ffmpeg_location()
+                self.set_ffprobe_location()
                 self.write_settings(ffmpeg_dir=self.ffmpeg_path,
                                        ffprobe_dir=self.ffprobe_path)
+                logging.warning('download folder not set', exc_info=True)
             else:
-                self.ffmpeg_path = self.ffmpeg_path_var.get()
+                self.set_ffmpeg_location()
                 self.write_settings(ffmpeg_dir=self.ffmpeg_path)
         elif len(self.ffprobe_path_var.get()) > 0:
-            self.ffprobe_path = self.ffprobe_path_var.get()
+            self.set_ffprobe_location()
             self.write_settings(ffprobe_dir=self.ffprobe_path)
         else:
-            print('ffmpeg plugins not set')
+            logging.warning('no ffmpeg plugins set', exc_info=True)
         self.set_search_max()
 
     def write_settings(self, dl_dir=None, ffmpeg_dir=None, ffprobe_dir=None):
         print(dl_dir, ffmpeg_dir, ffprobe_dir)
         try:
             cnf_file = open('./config.ini', 'w')
-            Settings.add_section('ffmpeg')
-            Settings.add_section('download')
-            Settings.set('download', 'directory', dl_dir)
-            Settings.set('ffmpeg', 'ffmpeg', ffmpeg_dir)
-            Settings.set('ffmpeg', 'ffprobe', ffprobe_dir)
-            Settings.write(cnf_file)
+            set_cnf.add_section('ffmpeg')
+            set_cnf.add_section('download')
+            set_cnf.set('download', 'directory', dl_dir)
+            set_cnf.set('ffmpeg', 'ffmpeg', ffmpeg_dir)
+            set_cnf.set('ffmpeg', 'ffprobe', ffprobe_dir)
+            set_cnf.write(cnf_file)
             cnf_file.close()
         except ConfigParser.DuplicateSectionError:
             pass
+
 
 class MenuBar(tk.Frame):
     def __init__(self, parent):
@@ -255,7 +232,7 @@ class MenuBar(tk.Frame):
 
     def about(self):
         tkMessageBox.showinfo("YTdl2mp3 1.0.0",
-                          "\nYoutube Downloader\n"
+                          "\nY2M\n"
                           "\nCreated by E.Cudjoe"
                           "\nVersion 1.0.0"
                           "\nhttps://github.com/edsoncudjoe")
@@ -331,6 +308,7 @@ class SearchItems(tk.Frame):
         except Exception as e:
             tkMessageBox.showerror("Internal Error", "Please try again")
             logging.error("Error: ", e, exc_info=True)
+
 
 class ResultTree(tk.Frame):
     """"""
@@ -551,17 +529,18 @@ class DownloadItems(tk.Frame):
         self.dl_status.grid(sticky=W + E + S)
 
         try:
-            Parse.readfp(open('./config.ini'))
-            self.dl_loc = Parse.get('download', 'directory')
-            self.ffmpeg_loc = Parse.get('ffmpeg', 'ffmpeg')
-            self.ffprobe_loc = Parse.get('ffmpeg', 'ffprobe')
-            self.download_dir = self.dl_loc
+            parsef.readfp(open('./config.ini'))
+            self.dl_loc = parsef.get('download', 'directory')
+            self.ffmpeg_loc = parsef.get('ffmpeg', 'ffmpeg')
+            self.ffprobe_loc = parsef.get('ffmpeg', 'ffprobe')
             self.file_convert = converter.Converter(self.ffmpeg_loc, self.ffprobe_loc)
         except (IOError, ConfigParser.NoSectionError, converter.ffmpeg.FFMpegError):
             logging.error('Unable to locate config file', exc_info=True)
             tkMessageBox.showwarning('Update Settings', 'Before you start, '
                                                          'set your download '
-                                                         'folder and ffmpeg codec information in the Settings window.')
+                                                         'folder and ffmpeg '
+                                                        'codec information in '
+                                                        'the Settings window.')
 
 
     def refresh_dl_options(self):
@@ -587,15 +566,12 @@ class DownloadItems(tk.Frame):
         one if none is present
         """
         try:
+            self.download_dir = self.dl_loc
             if self.download_dir:
                 self.video_location = self.download_dir + 'Videos/'
                 logging.info('DL directory: {}'.format(self.video_location))
             if not os.path.exists(self.video_location.encode('utf-8')):
                 os.mkdir(self.video_location)
-            else:
-                tkMessageBox.showwarning('No download folder',
-                                         'Create a download folder '
-                                         'in Settings')
         except AttributeError as ae:
             tkMessageBox.showerror('Error', 'No current download folder. '
                                             'Create one in Settings')
@@ -638,6 +614,14 @@ class DownloadItems(tk.Frame):
         """Handles downloads and conversions to mp3 files"""
 
         self.state.set('Preparing download please wait')
+        file_convert_options = {
+            'format': 'mp3',
+            'audio': {
+                'codec': 'mp3',
+                'bitrate': '44100',
+                'channels': 2
+            }
+        }
 
         def callback():
             try:
@@ -653,7 +637,8 @@ class DownloadItems(tk.Frame):
                 filename = self.temp_vid.filename.encode('utf-8')
                 working_file = self.temp_file + filename
                 encoded = self.audio_location + filename + '.mp3'
-                conv = self.file_convert.convert(working_file, encoded, fc_options,
+                conv = self.file_convert.convert(working_file, encoded,
+                                                 file_convert_options,
                                   timeout=None)
                 self.state.set('Converting to mp3...')
                 for time in conv:
