@@ -1,16 +1,15 @@
 import os
 import Tkinter as tk
 import ttk
-import pafy
 import re
 import threading
 import logging
-import platform
 import ConfigParser
-from settings import YtSettings
-from tkFileDialog import askdirectory
-import converter
 import tkMessageBox
+from tkFileDialog import askdirectory
+import pafy
+from settings import YtSettings
+import converter
 
 logging.basicConfig(level=logging.DEBUG,
                     filename='y2m.log',
@@ -162,18 +161,19 @@ class Setting(tk.Frame):
                                              'between 1 and 50')
 
     def apply_button(self):
+        """Set folder for download + codecs for conversion"""
         if self.download_dir:
             if len(self.ffmpeg_path_var.get()) > 0:
                 if len(self.ffprobe_path_var.get()) > 0:
                     self.set_ffmpeg_location()
                     self.set_ffprobe_location()
                     self.write_settings(dl_dir=self.download_dir,
-                                       ffmpeg_dir=self.ffmpeg_path,
-                                       ffprobe_dir=self.ffprobe_path)
+                                        ffmpeg_dir=self.ffmpeg_path,
+                                        ffprobe_dir=self.ffprobe_path)
                 else:
                     self.set_ffmpeg_location()
                     self.write_settings(dl_dir=self.download_dir,
-                                       ffmpeg_dir=self.ffmpeg_path)
+                                        ffmpeg_dir=self.ffmpeg_path)
                     logging.warning('ffprobe not set', exc_info=True)
             else:
                 self.write_settings(dl_dir=self.download_dir)
@@ -183,7 +183,7 @@ class Setting(tk.Frame):
                 self.set_ffmpeg_location()
                 self.set_ffprobe_location()
                 self.write_settings(ffmpeg_dir=self.ffmpeg_path,
-                                       ffprobe_dir=self.ffprobe_path)
+                                    ffprobe_dir=self.ffprobe_path)
                 logging.warning('download folder not set', exc_info=True)
             else:
                 self.set_ffmpeg_location()
@@ -214,39 +214,36 @@ class MenuBar(tk.Frame):
     def __init__(self, parent):
         tk.Frame.__init__(self, parent)
         self.parent = parent
+        self.app_settings = None
 
         self.menubar = tk.Menu(self.parent)
         self.filemenu = tk.Menu(self.menubar, tearoff=0, )
         self.helpmenu = tk.Menu(self.menubar, tearoff=0)
         root.config(menu=self.menubar)
 
-        # File
         self.menubar.add_cascade(label="File", menu=self.filemenu)
         self.filemenu.add_command(label='Settings', command=self.call_settings)
         self.filemenu.add_separator()
         self.filemenu.add_command(label='Quit', command=self.exit_app)
 
-        # Help
         self.menubar.add_cascade(label="Help", menu=self.helpmenu)
         self.helpmenu.add_command(label="About", command=self.about)
 
     def about(self):
-        tkMessageBox.showinfo("YTdl2mp3 1.0.0",
-                          "\nY2M\n"
-                          "\nCreated by E.Cudjoe"
-                          "\nVersion 1.0.0"
-                          "\nhttps://github.com/edsoncudjoe")
-
-    def call_settings(self):
-        self.app_settings = Setting(self)
+        tkMessageBox.showinfo("Y2M 1.0.0\nY2M\n\nCreated by E.Cudjoe"
+                              "\nVersion 1.0.0"
+                              "\nhttps://github.com/edsoncudjoe")
 
     def exit_app(self):
         if tkMessageBox.askokcancel("Quit", "Do you really wish to quit?"):
             root.quit()
 
+    def call_settings(self):
+        self.app_settings = Setting(self)
+
 
 class SearchItems(tk.Frame):
-    """"""
+    """Query Youtube API based on user request"""
     def __init__(self, parent):
         tk.Frame.__init__(self, parent)
         self.parent = parent
@@ -302,8 +299,10 @@ class SearchItems(tk.Frame):
             result = result_command.execute()
             return result
         except AttributeError:
-            tkMessageBox.showerror("Server Error", "I am unable to contact YouTube's Servers"
-                                                   "\nPlease check your internet connection")
+            tkMessageBox.showerror("Server Error", "I am unable to contact "
+                                                   "YouTube's Servers"
+                                                   "\nPlease check your "
+                                                   "internet connection")
             logging.error("Unable to contact YouTube servers", exc_info=True)
         except Exception as e:
             tkMessageBox.showerror("Internal Error", "Please try again")
@@ -311,7 +310,8 @@ class SearchItems(tk.Frame):
 
 
 class ResultTree(tk.Frame):
-    """"""
+    """Display results from user query"""
+
     def __init__(self, parent):
         tk.Frame.__init__(self, parent)
         self.parent = parent
@@ -396,7 +396,6 @@ class ResultTree(tk.Frame):
                                                  self.start_pafy.streams]
                 app.download_items.refresh_dl_options()
                 app.download_items.state.set("Download options loaded")
-                # print app.download_items.dl_options
             except AttributeError as e:
                 app.download_items.state.set("Internal error getting options")
                 logging.error(e)
@@ -410,10 +409,8 @@ class ResultTree(tk.Frame):
         Displays search results from the data api.
         Collects title, ID and duration details of each title
         """
-
         def populate_callback():
             count = 1
-            # self.playlist_info = []
             self.clear_tree()
             for item in search_results['items']:
                 self.get_title_duration(item)
@@ -427,8 +424,7 @@ class ResultTree(tk.Frame):
                 self.tree.insert("", '1', text=str(" "),
                                  values=(item['snippet']['title'],
                                          m.group(), item['snippet'][
-                                             'description']),
-                                 tags="v_")
+                                             'description']), tags="v_")
                 count += 1
 
         p = threading.Thread(name="Treeview", target=populate_callback)
@@ -447,10 +443,9 @@ class ResultTree(tk.Frame):
                                              id=item['id']['videoId'])
         self.duration_call = duration_call.execute()
 
-
     def treeview_sort(self, tv, col, reverse):
         """
-        Sorts treeview listing in alphabetical order
+        Sort treeview listing in alphabetical order
         """
         l = [(tv.set(k, col), k) for k in tv.get_children('')]
         l.sort(reverse=reverse)
@@ -475,7 +470,7 @@ class ResultTree(tk.Frame):
 
 
 class DownloadItems(tk.Frame):
-    """"""
+    """Download items from selection"""
 
     def __init__(self, parent):
         tk.Frame.__init__(self, parent)
@@ -541,7 +536,6 @@ class DownloadItems(tk.Frame):
                                                          'folder and ffmpeg '
                                                         'codec information in '
                                                         'the Settings window.')
-
 
     def refresh_dl_options(self):
         """Reset option variable and insert new download options"""
@@ -724,8 +718,6 @@ class DownloadItems(tk.Frame):
                 self.state.set('Download stopped')
                 print('Error: ', e)
                 logging.error('Error: {}'.format(e), exc_info=True)
-
-
 
         t = threading.Thread(name='vid_download', target=callback)
         t.start()
