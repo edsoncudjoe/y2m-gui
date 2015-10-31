@@ -336,7 +336,7 @@ class ResultTree(tk.Frame):
 
         self.tree_columns = ("Name", "Items")
         self.tree = ttk.Treeview(self.results_frame, columns=self.tree_columns,
-                                 height=20,
+                                 height=17,
                                  selectmode='browse')
         self.tree.tag_bind("v_", "<Double-1>", self.on_double_click)
         self.tree.tag_bind("pl_", "<Double-1>", self.on_double_click)
@@ -399,6 +399,9 @@ class ResultTree(tk.Frame):
             except AttributeError as e:
                 app.download_items.state.set("Internal error getting options")
                 logging.error(e)
+            except Exception as p:
+                logging.error(p, exc_info=True)
+                tkMessageBox.showerror('Error', p)
 
         get_dl_options = threading.Thread(name='get_options',
                                           target=dl_opt_list)
@@ -514,6 +517,7 @@ class DownloadItems(tk.Frame):
         self.dl_status = tk.Label(self.parent, textvariable=self.state,
                                   bd=1, relief=tk.SUNKEN, anchor=W,
                                   bg='#424242', fg='#ffffff', pady=3)
+        self.progbar = ttk.Progressbar(self.parent, orient="horizontal", mode="determinate")
         self.choice_dl.grid_columnconfigure(0, weight=1)
 
         self.dl_options_lbl.grid(row=0, column=0)
@@ -521,7 +525,8 @@ class DownloadItems(tk.Frame):
         download_label.grid(row=0, column=0, columnspan=2)
         self.download_item.grid(row=1, column=0, pady=2)
         self.mp3_btn.grid(row=1, column=1, pady=2)
-        self.dl_status.grid(sticky=W + E + S)
+        self.dl_status.grid(row=5, column=0, sticky=W+E+S)
+        self.progbar.grid(row=4, column=0, sticky=W+E+S)
 
         try:
             parsef.readfp(open('./config.ini'))
@@ -588,6 +593,7 @@ class DownloadItems(tk.Frame):
         one if none is present
         """
         try:
+            self.download_dir = self.dl_loc
             if self.download_dir:
                 self.audio_location = self.download_dir + 'Audio/'
                 self.temp_file = self.download_dir + 'temp/'
@@ -621,9 +627,10 @@ class DownloadItems(tk.Frame):
             try:
                 self.check_audio_download_folder()
                 # Download mp4
-                self.state.set('Downloading')
+                self.state.set('Downloading video...')
                 self.temp_vid = app.result_tree.start_pafy.getbest(
                     preftype="mp4")
+                self.progbar.start()
                 self.temp_vid.download(filepath=self.temp_file,
                                   quiet=False,
                                   callback=self.progress_callback,
@@ -641,6 +648,7 @@ class DownloadItems(tk.Frame):
                 # Delete temp file
                 os.remove(working_file)
                 self.state.set('Conversion complete')
+                tkMessageBox.showinfo('Finished!', 'The mp3 file conversion is complete!')
             except (TypeError, AttributeError):
                 tkMessageBox.showwarning('No file type', 'Select an item '
                                                       'from the results first')
@@ -663,10 +671,14 @@ class DownloadItems(tk.Frame):
         temp_vid_dl.start()
 
     def progress_callback(self, total, recvd, ratio, rate, eta):
+        self.progbar.update()
         self.update_idletasks()
+        self.progbar['maximum'] = total
+        self.progbar['value'] = recvd
         if recvd == total:
 
             self.state.set('Download complete')
+            tkMessageBox.showinfo('Finished!', 'Download complete!')
 
     def download_video_callback(self):
         try:
@@ -685,6 +697,7 @@ class DownloadItems(tk.Frame):
                 self.p = pafy.new(item_id, size=True)
                 self.video = app.result_tree.start_pafy.streams[stream]
                 self.state.set("Downloading video...")
+                self.progbar.start()
                 self.video.download(filepath=self.video_location,
                                     quiet=False,
                                     callback=self.progress_callback,
