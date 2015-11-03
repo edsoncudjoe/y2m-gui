@@ -20,14 +20,13 @@ logging.getLogger(__name__)
 
 set_cnf = ConfigParser.ConfigParser()
 parsef = ConfigParser.SafeConfigParser()
+new = YtSettings()
 
 N = tk.N
 S = tk.S
 E = tk.E
 W = tk.W
 END = tk.END
-
-new = YtSettings()
 
 
 class Setting(tk.Frame):
@@ -135,7 +134,7 @@ class Setting(tk.Frame):
         """
         user_dir = askdirectory()
         try:
-            self.download_dir = user_dir + '/YT2Mp3/'
+            self.download_dir = user_dir + '/Y2M/'
             os.mkdir(self.download_dir)
             self.download_loc_display.set(self.download_dir)
         except OSError:
@@ -230,7 +229,7 @@ class MenuBar(tk.Frame):
         self.helpmenu.add_command(label="About", command=self.about)
 
     def about(self):
-        tkMessageBox.showinfo("Y2M 1.0.0\nY2M\n\nCreated by E.Cudjoe"
+        tkMessageBox.showinfo("About", "Y2M 1.0.0\nY2M\n\nCreated by E.Cudjoe"
                               "\nVersion 1.0.0"
                               "\nhttps://github.com/edsoncudjoe")
 
@@ -292,6 +291,7 @@ class SearchItems(tk.Frame):
         Returns search results as list
         """
         try:
+            logging.info(dir(new))
             result_command = new.yt.search().list(part="snippet",
                                                        q=self.search_entry,
                                                        type=self.search_type,
@@ -306,7 +306,7 @@ class SearchItems(tk.Frame):
             logging.error("Unable to contact YouTube servers", exc_info=True)
         except Exception as e:
             tkMessageBox.showerror("Internal Error", "Please try again")
-            logging.error("Error: ", e, exc_info=True)
+            logging.error(e, exc_info=True)
 
 
 class ResultTree(tk.Frame):
@@ -517,7 +517,8 @@ class DownloadItems(tk.Frame):
         self.dl_status = tk.Label(self.parent, textvariable=self.state,
                                   bd=1, relief=tk.SUNKEN, anchor=W,
                                   bg='#424242', fg='#ffffff', pady=3)
-        self.progbar = ttk.Progressbar(self.parent, orient="horizontal", mode="determinate")
+        self.progbar = ttk.Progressbar(self.parent, orient="horizontal",
+                                       mode="determinate")
         self.choice_dl.grid_columnconfigure(0, weight=1)
 
         self.dl_options_lbl.grid(row=0, column=0)
@@ -531,14 +532,12 @@ class DownloadItems(tk.Frame):
         try:
             parsef.readfp(open('./config.ini'))
             self.dl_loc = parsef.get('download', 'directory')
-            self.ffmpeg_loc = parsef.get('ffmpeg', 'ffmpeg')
-            self.ffprobe_loc = parsef.get('ffmpeg', 'ffprobe')
-            self.file_convert = converter.Converter(self.ffmpeg_loc, self.ffprobe_loc)
-        except (IOError, ConfigParser.NoSectionError, converter.ffmpeg.FFMpegError):
+        except (IOError, ConfigParser.NoSectionError,
+                converter.ffmpeg.FFMpegError):
             logging.error('Unable to locate config file', exc_info=True)
             tkMessageBox.showwarning('Update Settings', 'Before you start, '
-                                                         'set your download '
-                                                         'folder and ffmpeg '
+                                                        'set your download '
+                                                        'folder and ffmpeg '
                                                         'codec information in '
                                                         'the Settings window.')
 
@@ -614,6 +613,9 @@ class DownloadItems(tk.Frame):
         """Handles downloads and conversions to mp3 files"""
 
         self.state.set('Preparing download please wait')
+        parsef.readfp(open('./config.ini'))
+        ffmpeg_loc = parsef.get('ffmpeg', 'ffmpeg')
+        ffprobe_loc = parsef.get('ffmpeg', 'ffprobe')
         file_convert_options = {
             'format': 'mp3',
             'audio': {
@@ -633,14 +635,15 @@ class DownloadItems(tk.Frame):
                 self.progbar.start()
                 self.temp_vid.download(filepath=self.temp_file,
                                   quiet=False,
-                                  callback=self.progress_callback,
+                                  callback=self.mp3_progress_callback,
                                   meta=True)
                 filename = self.temp_vid.filename.encode('utf-8')
                 working_file = self.temp_file + filename
                 encoded = self.audio_location + filename + '.mp3'
-                conv = self.file_convert.convert(working_file, encoded,
-                                                 file_convert_options,
-                                  timeout=None)
+                file_convert = converter.Converter(ffmpeg_loc, ffprobe_loc)
+                conv = file_convert.convert(working_file, encoded,
+                                            file_convert_options,
+                                            timeout=None)
                 self.state.set('Converting to mp3...')
                 for time in conv:
                     pass
@@ -648,11 +651,16 @@ class DownloadItems(tk.Frame):
                 # Delete temp file
                 os.remove(working_file)
                 self.state.set('Conversion complete')
-                tkMessageBox.showinfo('Finished!', 'The mp3 file conversion is complete!')
-            except (TypeError, AttributeError):
-                tkMessageBox.showwarning('No file type', 'Select an item '
-                                                      'from the results first')
-                print Exception
+                tkMessageBox.showinfo('Finished!', 'Your mp3 file is ready!')
+            except converter.ffmpeg.FFMpegError as f:
+                logging.error(f)
+                tkMessageBox.showerror('Error!', 'Check installed location '
+                                                 'of ffmpeg')
+            except (TypeError, AttributeError) as e:
+                logging.error(e)
+                tkMessageBox.showwarning('No file type', 'Choose an item '
+                                                         'from the results '
+                                                         'list first')
                 self.state.set('Download stopped')
             except OSError:
                 self.missing_folder_warning()
@@ -676,9 +684,16 @@ class DownloadItems(tk.Frame):
         self.progbar['maximum'] = total
         self.progbar['value'] = recvd
         if recvd == total:
-
             self.state.set('Download complete')
             tkMessageBox.showinfo('Finished!', 'Download complete!')
+
+    def mp3_progress_callback(self, total, recvd, ratio, rate, eta):
+        self.progbar.update()
+        self.update_idletasks()
+        self.progbar['maximum'] = total
+        self.progbar['value'] = recvd
+        if recvd == total:
+            self.state.set('Download complete')
 
     def download_video_callback(self):
         try:
@@ -767,7 +782,6 @@ class MainApplication(tk.Frame):
         self.parent.update_idletasks()
         self.parent.after_idle(lambda: self.parent.minsize(
             self.parent.winfo_width(), self.parent.winfo_height()))
-
 
 root = tk.Tk()
 root.title('Y2M')
